@@ -35,6 +35,10 @@ export interface JobDefinition<I = unknown> {
   type: JobType;
   input: z.ZodType<I>;
   steps: readonly JobStep<I>[];
+  /** Called after a step fails, before the job is marked failed (e.g. to move a product to needs_attention). */
+  onError?(ctx: Omit<StepContext<I>, 'log' | 'progress'>, error: JobError): void;
+  /** Called after the last step succeeds. */
+  onDone?(ctx: Omit<StepContext<I>, 'log' | 'progress'>): void;
 }
 
 /**

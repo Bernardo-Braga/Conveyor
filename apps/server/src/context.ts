@@ -8,12 +8,20 @@ import { KeychainStore, MemoryStore, Secrets, type SecretStore } from './secrets
 import { SettingsStore } from './settings/store.ts';
 import { ShopifyTokenCache } from './shopify/token.ts';
 import { connectionTestJob } from './connections/index.ts';
+import { importJob } from './jobs/importJob.ts';
+import { pullProductJob } from './jobs/pullProductJob.ts';
+import { ShopifyClient } from './shopify/client.ts';
+import { QuotaStore } from './suppliers/quota.ts';
+import { RapidApiClient } from './suppliers/rapidapi.ts';
 
 export interface AppContext extends Services {
   opened: OpenedDb;
   worker: JobWorker;
   registry: JobRegistry;
   shopifyTokens: ShopifyTokenCache;
+  shopify: ShopifyClient;
+  quota: QuotaStore;
+  rapidapi: RapidApiClient;
   close(): Promise<void>;
 }
 
@@ -34,7 +42,10 @@ export function createContext(opts: ContextOptions = {}): AppContext {
   const settings = new SettingsStore(db);
   const services: Services = { db, ledger, secrets, settings, bus };
   const shopifyTokens = new ShopifyTokenCache(ledger);
-  const registry = new JobRegistry().register(connectionTestJob(shopifyTokens));
+  const shopify = new ShopifyClient({ ledger, secrets, settings, tokens: shopifyTokens });
+  const quota = new QuotaStore(db);
+  const rapidapi = new RapidApiClient({ db, ledger, secrets, quota });
+  const registry = new JobRegistry().register(connectionTestJob(shopifyTokens)).register(importJob({ rapidapi, quota })).register(pullProductJob({ shopify }));
   const worker = new JobWorker(services, registry);
   return {
     ...services,
@@ -42,6 +53,9 @@ export function createContext(opts: ContextOptions = {}): AppContext {
     worker,
     registry,
     shopifyTokens,
+    shopify,
+    quota,
+    rapidapi,
     async close() {
       await worker.stop();
       opened.close();

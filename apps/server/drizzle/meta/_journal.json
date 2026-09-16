@@ -8,6 +8,13 @@
       "when": 1789581942963,
       "tag": "0000_acoustic_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789586701631,
+      "tag": "0001_complete_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

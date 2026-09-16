@@ -1,0 +1,699 @@
+{
+  "result": {
+    "status": {
+      "code": 200,
+      "data": "success",
+      "executionTime": "1.19",
+      "requestTime": "2026-09-17 05:39:41",
+      "requestId": "a0557a0bb192fdcdf1b6928bfbf7d79f",
+      "endpoint": "item_detail",
+      "apiVersion": "4.0.5",
+      "functionsVersion": "4.0.8",
+      "la": "0.02",
+      "pmu": 805032,
+      "mu": 804712
+    },
+    "settings": {
+      "locale": "en_US",
+      "currency": "USD",
+      "country": "US",
+      "itemId": "3256812772817240"
+    },
+    "item": {
+      "available": true,
+      "itemId": "3256812772817240",
+      "title": "Men's slip-on loafers, retro slip-on casual shoes, suitable for daily commuting, versatile for all seasons, low-top, soft-soled, simple, no-lace-up, lightweight, breathable moccasins",
+      "catId": 202226817,
+      "breadcrumbs": null,
+      "sales": null,
+      "wishCount": 0,
+      "itemUrl": "//www.aliexpress.com/item/3256812772817240.html",
+      "images": [
+        "//ae-pic-a1.aliexpress-media.com/kf/S866b4a4292f9496eacae6ca4ed953378W.jpg",
+        "//ae-pic-a1.aliexpress-media.com/kf/Sc1bdad21fbdc477d92b4ebff2690912e9.jpg",
+        "//ae-pic-a1.aliexpress-media.com/kf/S7178f05a953e40eaa547e00a3bc4b576x.jpg",
+        "//ae-pic-a1.aliexpress-media.com/kf/S1b7bcd7aefe943f6a69eac416ccfaf2aM.jpg",
+        "//ae-pic-a1.aliexpress-media.com/kf/Sf93be07e8dbb41ffba7c782b92ff0ce9v.jpg",
+        "//ae-pic-a1.aliexpress-media.com/kf/Saff8129538d44da19be392b66df66c62p.jpg"
+      ],
+      "video": null,
+      "properties": {
+        "cut": "No / stitching / Not above ankle / Men / none / Daily / Loafers / Spring/Autumn / V001 / Solid / EVA / Rubber / Round Toe / Westlink / PU / Mainland China / Mesh / Adult / Slip-On",
+        "list": [
+          {
+            "name": "Whether with metal toe cap",
+            "value": "No"
+          },
+          {
+            "name": "Whether waterproof",
+            "value": "No"
+          },
+          {
+            "name": "Upper fixing method",
+            "value": "stitching"
+          },
+          {
+            "name": "Upper coverage",
+            "value": "Not above ankle"
+          },
+          {
+            "name": "Gender",
+            "value": "Men"
+          },
+          {
+            "name": "High-concerned chemical",
+            "value": "none"
+          },
+          {
+            "name": "Occasion",
+            "value": "Daily"
+          },
+          {
+            "name": "Shoes Type",
+            "value": "Loafers"
+          },
+          {
+            "name": "Season",
+            "value": "Spring/Autumn"
+          },
+          {
+            "name": "Model Number",
+            "value": "V001"
+          },
+          {
+            "name": "Pattern Type",
+            "value": "Solid"
+          },
+          {
+            "name": "Insole Material",
+            "value": "EVA"
+          },
+          {
+            "name": "Outsole Material",
+            "value": "Rubber"
+          },
+          {
+            "name": "Toe Shape",
+            "value": "Round Toe"
+          },
+          {
+            "name": "Brand Name",
+            "value": "Westlink"
+          },
+          {
+            "name": "Upper Material",
+            "value": "PU"
+          },
+          {
+            "name": "Origin",
+            "value": "Mainland China"
+          },
+          {
+            "name": "Lining Material",
+            "value": "Mesh"
+          },
+          {
+            "name": "Department Name",
+            "value": "Adult"
+          },
+          {
+            "name": "Closure Type",
+            "value": "Slip-On"
+          }
+        ]
+      },
+      "description": {
+        "html": "<div class=\"detailmodule_html\"><div class=\"detail-desc-decorate-richtext\"><p><img src=\"//ae-pic-a1.aliexpress-media.com/kf/Sa29f93fbf5b641c790936eb8246baeb4b.png\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/S096fbb91650d47c4a40f1a243e4702166.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/Sed848e9787be4df48d6cd9f029573c50O.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/Sd3c68be4be904eb0b0c8cd6233c977ads.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/S01d76a094f3a41b4bcae1c0e68377218l.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/Sf95b9e5524c54b7c96acad406f365b21w.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/Se17694a9a640456094ea863dd2c0bd18Z.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/Sf22988d8fe0e44d599ec6c7b42461c6dL.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/Sc57eb895021843e5a49960e77e9b9f77q.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/S3bb58fe714904bcfb548f7c6ef6e3bccs.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/S107adcf2b86b4a31ac860b8a78209b5dP.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/S7995933a34f3479eb46652e5cc84fd82X.jpg\" slate-data-type=\"image\"/><img src=\"//ae-pic-a1.aliexpress-media.com/kf/S346edd47a1fc41b6adb61be8224ec525t.jpg\" slate-data-type=\"image\"/></p></div></div>\r\n\n<script>window.adminAccountId=null;</script>\n",
+        "images": [
+          "//ae-pic-a1.aliexpress-media.com/kf/S096fbb91650d47c4a40f1a243e4702166.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/Sed848e9787be4df48d6cd9f029573c50O.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/Sd3c68be4be904eb0b0c8cd6233c977ads.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/S01d76a094f3a41b4bcae1c0e68377218l.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/Sf95b9e5524c54b7c96acad406f365b21w.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/Se17694a9a640456094ea863dd2c0bd18Z.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/Sf22988d8fe0e44d599ec6c7b42461c6dL.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/Sc57eb895021843e5a49960e77e9b9f77q.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/S3bb58fe714904bcfb548f7c6ef6e3bccs.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/S107adcf2b86b4a31ac860b8a78209b5dP.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/S7995933a34f3479eb46652e5cc84fd82X.jpg",
+          "//ae-pic-a1.aliexpress-media.com/kf/S346edd47a1fc41b6adb61be8224ec525t.jpg"
+        ]
+      },
+      "sku": {
+        "def": {
+          "quantity": 1400,
+          "price": 60.47,
+          "promotionPrice": 29.03,
+          "vat": null,
+          "unit": "Pair",
+          "isBulk": false
+        },
+        "base": [
+          {
+            "skuId": "12000059893678057",
+            "skuAttr": "14:201447389;200000124:100013888",
+            "propMap": "14:201447389;200000124:100013888",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "PU9jBNH3qdlIXb-sM2DbxpXLqtC4v1TsxoYtJqMML8v_QEuD6ErewzCV9-8k4_WVf1rvPYc1SKlafU_25kcnRlI1BcHCQ_Qjo-7POhn8pXLm_mowKzMU7RQAX7hVVAuRCW0UlY8No54LdVRT_-h7RD4hayVxWpoEtHkh4C2OOIVuXBt47sT0A4QHDnRG-Ad5"
+          },
+          {
+            "skuId": "12000059893678056",
+            "skuAttr": "14:201447389;200000124:200000364",
+            "propMap": "14:201447389;200000124:200000364",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "VS8ShAp9XtT0s3MPN1MWmahrQh3WmEKGVCF9lCOptIRb-PrOXxcrY6fpJeI2HQ8KbQlUEvIL5tsoTLQYOc_RSn9CDOr8OhJQoM3VozteFeZ82vnk6Iy0xQJfP6cQO6gKgynPP6V2J8qh_BpYx8hwCb_zMC1REFN75-3OVTmxLf5P-WAeYOL1A53ZMSPIRz4z"
+          },
+          {
+            "skuId": "12000059893678059",
+            "skuAttr": "14:201447389;200000124:200000337",
+            "propMap": "14:201447389;200000124:200000337",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "SJv7dbiwEvtxvNSWqIQ4u3bbRow3r37QQxbSAEhHlDGsePSgkeFBD0ay86OZ7qD0FSGRX4-UNl3sSZ3iY0tttmZ2paOmhVrkkYuHrBpkdlECT_9vKsrq3LV8WR2J06RvPIgAwG3Hzd4ns2nY6nob9ZrjoOLyd3ygGP6IhTWHvOqZWKk0HBEZqS8bA7oEpkuC"
+          },
+          {
+            "skuId": "12000059893678058",
+            "skuAttr": "14:201447389;200000124:100010483",
+            "propMap": "14:201447389;200000124:100010483",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "qzY40VmquqzxCCQ9IKKj69ooUN_-rQs3h1wsUtOgksyr4n8jLrzoyDKJd5gh_FpMkCT5l80yU7YHxTcB2uvWNn3iZl1bWXvry-KBxl2A7NRYVipG-n_Ei4nYglM1H5KyVogpV-WVck7x58hHnE8lDdcibJ4vb2TQOW5DbOdhbjM2obWXz2a2sgqCge22G-wS"
+          },
+          {
+            "skuId": "12000059893678061",
+            "skuAttr": "14:201447389;200000124:100010487",
+            "propMap": "14:201447389;200000124:100010487",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "rATXfytG6TWzemG8FpjPF2eRIuMHjf0fHzoL9StEjcZHKReBvA236iHHix0XS3diwBGEjFm4TieC16fIaUd9E7QPZonb8MQWCmSjyXp1va8UVOrmpIzrpBDu6FjJn9mTLEp1s5EF-07R5Bdavf535YDJ6KlqTNCSAEByqZ1d5T8zKTF9qNck4pnRm1Lofi5o"
+          },
+          {
+            "skuId": "12000059893678060",
+            "skuAttr": "14:201447389;200000124:200000338",
+            "propMap": "14:201447389;200000124:200000338",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "tcSDo3EnMoaFOR_uHXNRqP8bxV0w0AQfRIMi8AmXD28fIb3xkyRiRkQThCc-JnJAIaSbku6A3xGwPl4DoyntUCFNcmYHJzP4a7qrKTuWCmt4eTmPn2Qnn58zXMDOCajhn86CHLSqfZUzOHzS35VQYdrNeOxWfrGh0evMEhrsCP-fJ2eBOI-rD95XXyH46Gaj"
+          },
+          {
+            "skuId": "12000059893678062",
+            "skuAttr": "14:201447389;200000124:3116",
+            "propMap": "14:201447389;200000124:3116",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "7QiDN8D-WJclCClJ5beTbz-6BKzFVFaRqpZfTS0KztTGSokiAy8CJ4fBrzTBLUvr1Isefdjl6bCQu_sJlXpLD-suNzB-XWCo1bmpvBJhxo9poD-5OPIbqkrLoD0vA75Ac7aQ4JUw2MKxjI9WzIS6wvfnWtY4pbLptyeQaNWIDto848gqVtAJxxlkJYZ8pH99"
+          },
+          {
+            "skuId": "12000059893678049",
+            "skuAttr": "14:29;200000124:200000364",
+            "propMap": "14:29;200000124:200000364",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "iRZycZ2V6rYHWgXYMRioSlljI_VXsV7x7Jp5a546-uhkTTtv1juo1nHUJml1E-ajCxeacLBNBs9GWwQghiqRVnBL-KMwTa8NnEN-b8L-I0464EBFpOgWMF-Oh0N2dYITm1r6EA7ph2BzimkDgdy1KpO_SB6Wa1ILUp7C8KT8ZKoqC1TcSMg7bVYG1XyvsgT6"
+          },
+          {
+            "skuId": "12000059893678048",
+            "skuAttr": "14:173;200000124:3116",
+            "propMap": "14:173;200000124:3116",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "kPYzyZPKnl4bfUzxgHZ5g-8O7ruZHs1_YwkOE3enUm0sesHYmix98tdHbFdx7yKc42EXg1aJd8nLmD_BaBPz9_VKNU4UItMZFS9Wyz21on3l9F34-O0-EP_CrVztSVaz7WqgHtaQep95viwWsUSLF0fjHoBP1th0n2_COQFxstiP5ndE92gCldt67xE7e61j"
+          },
+          {
+            "skuId": "12000059893678051",
+            "skuAttr": "14:29;200000124:100010483",
+            "propMap": "14:29;200000124:100010483",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "pzOB7BMX7ceJ3qege_UavVlvAYMJdTcqDX3pS9lcezNKPvxKej4s1OR7b6pvf5fartNkcyYXJv1HrKQhAp-JXlQHzwt8-eXJH3ScoBbmNtvcpp_YlguqNTwWiGeR8_V1fv7DDy05jykgv-kCcOddh1shi0O94Kog4bpWLfWMCW-t5STSMtUOPzaEh5ni6MKL"
+          },
+          {
+            "skuId": "12000059893678050",
+            "skuAttr": "14:29;200000124:100013888",
+            "propMap": "14:29;200000124:100013888",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "7UKnGaWEcLmeOjrvsWf6-WghyxZ-HRpitQDsKbkaEyIh6xfxvdo9QAN_UmdeP1x5LOM_zEX4Cd-7nNS4yy1ZMhBOvVNV4VHyGm7vzz7zqa6cY75Drljuqg9RN_RhN2SMraRoMq8ksVc6ZtkRzjttlPlvTzS-aFfD3vK3kQPuSsBJJZRFdhiy4i40_pgy9uJH"
+          },
+          {
+            "skuId": "12000059893678053",
+            "skuAttr": "14:29;200000124:200000338",
+            "propMap": "14:29;200000124:200000338",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "F-ndiWjdcCsGYzD-1_KyRcqyNGfJ6hrSSlDF4upDaESi_yEVUOhqwPeW_09WCezQ3GMImQxfmzufLpwLaSAeBLSQmXRsf32wGiq5bNBU9EfC3LZycf2Ze-i80UGphEJFXky7p77RrebJS6prHDjlHUJx7OXZzCiClNv7bEUbu5GYYGipJQ-DYdtZQqcsFb4z"
+          },
+          {
+            "skuId": "12000059893678052",
+            "skuAttr": "14:29;200000124:200000337",
+            "propMap": "14:29;200000124:200000337",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "8DDB-q9ZsoaDtMSD7IuUDrl4vJysgLRSQbYuNGEU0qJNGgQjgRaiCLsN57ZUJQD0LhfiON1AGyFWisNtVIxuBcJAQl8UkhakbNAWwyUFsb8j5F9vonXshO1XvfM9tVwPIrRT7bqMnl4BkymUkD8TsirnBOfo5MYuqDhfqbP2rxeSkXnrWMRDoxYy0vtKiwR5"
+          },
+          {
+            "skuId": "12000059893678055",
+            "skuAttr": "14:29;200000124:3116",
+            "propMap": "14:29;200000124:3116",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "miUucMWG3qgsWLDy2Q_q3GOR-rywPJl8Os_DVtVtlvjHcImXEW5jzAb8kCuhy1cKn4LZY5cjCgmklxyJ4aGV3Uvisav-IFY_7odJKG5hx0R2MOGOOzK8pHuCpvYNEFWRxOphmFrURqOvzP96hGgNRo7NjYQRwf6Jhk2AqrH_7lFzOXNlSuJRKQ6aFV3MFLSz"
+          },
+          {
+            "skuId": "12000059893678054",
+            "skuAttr": "14:29;200000124:100010487",
+            "propMap": "14:29;200000124:100010487",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "LjCp2NxTILsAXXKx_dL3EKBEUEUe0TxCkWHzMrPEkZfSkDVrOjQStNPjsUlrS-fhqGKw10Ws0JC0vWYOD_3nt1bRfe9Ka6KenYZhgfyroaU-wgPTn21jKyJkfuzZbIGDOwNMWW2NQT-1bpSR2zCuHGoeb6D6fDQshB6Q6cmXsts3dgVv--nGaQRH0GhlNHlV"
+          },
+          {
+            "skuId": "12000059893678041",
+            "skuAttr": "14:193;200000124:3116",
+            "propMap": "14:193;200000124:3116",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "Vtd7g4v62Pmani3arv6jAJn9aXjDoWkuAdULo3mMZYybcn_dphEOmpr2VJbpfKwhzbfMMpF-ErDJr3t8kTsk4euKILm1U5jdEizyhKfUyqHtbNRBrnb31KExEbdavYZXP3gOpAsxTTSn_m6gx9iPNscxmzCQDjGQooySlaCdwlCN5594MCwz_3RLDWZOcXPX"
+          },
+          {
+            "skuId": "12000059893678040",
+            "skuAttr": "14:193;200000124:100010487",
+            "propMap": "14:193;200000124:100010487",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "her8QAS0JqTYRoFm1Qx6y_zPvjPTS3ctdt7LXFNoAZv8ntOnNUSOqO_mmvJELmuxNLO82MX6c5xl8mHKmViuGgn43Qk-dZyi3dPnYEYPZQPke6R-cci8Ls46UktkHdxIL9tUuep5NRmDh50dYxMoEyZx2FUe37PCU0yMb5UH1j5D_BB4jc4nCqqjnoPpOOKb"
+          },
+          {
+            "skuId": "12000059893678043",
+            "skuAttr": "14:173;200000124:100013888",
+            "propMap": "14:173;200000124:100013888",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "sMAyYFIYnB_DUO6XtiLTIqcc2KWrYSZIV0HnwE9lCuZ-s6ppj0m0e7KpZeEUm8dHlIhaoTRa5c01_gUvp9_vWx5TMWBjjCyVgSnNidUxgoCtYvekuEBC5rxhBbLBxlpm8Vv8giPu6EUX5T_v8vyOFFSex2rx6ZG8U5xHKibWu6jYofVgxx5yVliDGymPKTDI"
+          },
+          {
+            "skuId": "12000059893678042",
+            "skuAttr": "14:173;200000124:200000364",
+            "propMap": "14:173;200000124:200000364",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "PAJYO7ufMHgZ492Vs_vlm9mxDZlThzcMaIPO4-Shbw2SW-DmPGH5BAHhHEUwdufqwWD22Rv0qgJWVbsqwblcVouiwEQ7-gL7l7hom_RpD1GtsOGCAGKtZHndW1wk3O0-G7WVfVS8eqlF_2nzKJhrW1x-BoPONUuCMimfIujbNyITVgD8s1FABKv055KW7RLR"
+          },
+          {
+            "skuId": "12000059893678045",
+            "skuAttr": "14:173;200000124:200000337",
+            "propMap": "14:173;200000124:200000337",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "BaSp-xSw_iKQDXiiC93A2-8OAZEk1ctYX4YOMbeVmC8V-ZmszinaHqAJPuBJ8ghcS8S-yoRER9gQ6kAPySxzMvUzRnJ8TkodUm-eVOaugkg_hTnFSFFTqaRscWCu4VGe_o7xspXlchaQ3zG6GxgkC4oqRLzqHO5euWVK6K4hH_NYnnICDTkEMWeRt1laTwLj"
+          },
+          {
+            "skuId": "12000059893678044",
+            "skuAttr": "14:173;200000124:100010483",
+            "propMap": "14:173;200000124:100010483",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "FVVPEmOMO3LKSfrJUDxbBuO2fjmS0vXj5-L77yjnb2cwtISoyF7-fUEiknkcTIjUj8lT5LCMmUCaMHbBlNO5egZI3ETvlI26DhejZSmu4u7-uOiej8-O6MeZ7IksEfOxW0KIQZDTIs5HrhDj3AzuFePeSw3AjoGOiH2xXq0JnPwP8QkGS6ZVImkjjkZ1fjhw"
+          },
+          {
+            "skuId": "12000059893678047",
+            "skuAttr": "14:173;200000124:100010487",
+            "propMap": "14:173;200000124:100010487",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "MtwyHZ3wStL_-9SIj6Qq9Ef54czCGpnrrHLD1bt242cXZUURLPiKAu6bLYIf3Odf5VTDTvpEWPeQB9mngSxoqQRfPeltmVCwJ7g02ABrIOvx4hzzf8rbDDqEWuAJHLlhqtoKzY2Z63CSPGNudVjLMZJQZR8plbt89p2DNTh9QrQuPPkfR7JpbsPawoEq47vs"
+          },
+          {
+            "skuId": "12000059893678046",
+            "skuAttr": "14:173;200000124:200000338",
+            "propMap": "14:173;200000124:200000338",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "Pvc2go9U0106k9EkLeKazcyhYuK70EuiX8Q665SeXMZyHp6XHaWbCss7hCoGSRo1dW_9WqE3zkrUjno2qtbzRlYnghXeJ-oBm6JznwYnSDIw-ja5lzrrGIjuuBR6ZNar0zXW1ApzwtJjqiR_PD-3DXl5LRPbxebeukwrLC2MCSAW8RRYN2tyU8N8PkZlY5Ov"
+          },
+          {
+            "skuId": "12000059893678035",
+            "skuAttr": "14:193;200000124:200000364",
+            "propMap": "14:193;200000124:200000364",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "Y1fTrrDEJsWrzITsc6mQPW5c0Y2r3KGjRCuQEVMSfD5jDAuSjbF5znocl1G2oFQLd3Q68hwjjOFLHDqktMG-QXo6sKBUvfUlGhPT91k4lzSRwxoqH0B_3rwrseT7G8GtABCwTgRileMnZ-CTzyTHMq_3L83fT0uGLvQfG3VIaEWVmaVB3OHNI13HgYmTDYAC"
+          },
+          {
+            "skuId": "12000059893678037",
+            "skuAttr": "14:193;200000124:100010483",
+            "propMap": "14:193;200000124:100010483",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "fCBTaC2qvNJKEBtXjR4kizV6TMT22GXhIdaZRNN7gCy-scxEBf3g78-b_eawTjfx2nHq3zAjMHWmYmNt_qJoK0P-QeIKphU3gKxvq2UvrHPZnMG7mNf55w4JVE-aYcI--lLqLm2yCMiTqgUOuXdE0kqWJGGVT5Ru4NH93V7jD6mcYQWPW6gKW1lhQ52ksnLy"
+          },
+          {
+            "skuId": "12000059893678036",
+            "skuAttr": "14:193;200000124:100013888",
+            "propMap": "14:193;200000124:100013888",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "kk4P_BR9yFo1PRYL-p9sF6AeTpdyWAnr1Ora62GEt8ybGtNynn-5TTHAFNqLS3XaRhkuDYH92MPu7-LiAPP3o1y3B4iWs1bP7EFhBoRQfHD_inPOA6q3k3zh7TmZHbc47uzpBpHQHvn4BemUuRAnjKlruBPiYsPrM6-gKEcpsJuY5nLGtZyF5Ffny1myzr_u"
+          },
+          {
+            "skuId": "12000059893678039",
+            "skuAttr": "14:193;200000124:200000338",
+            "propMap": "14:193;200000124:200000338",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "vlMdZGPjppAH5iW5sNZv7-gLuygDhziEsg_pmRUHxsuDz-TN6Hv-I15Y8xT1vTPtjuAWyhIZJ5ITcEJR3FKJnuXl76WzzjezBn8y5lABq6tQ0MAXKmwmQbUjCU0ltdVm1lu7ctKhXmO-wr_Bi_cUXc4LP5hBRwokw44h3AxvzIogs5I4_5fLorGsIy2Tiryz"
+          },
+          {
+            "skuId": "12000059893678038",
+            "skuAttr": "14:193;200000124:200000337",
+            "propMap": "14:193;200000124:200000337",
+            "price": 60.47,
+            "promotionPrice": 29.03,
+            "quantity": 50,
+            "upcoming": {
+              "promotionPrice": null,
+              "title": null
+            },
+            "limit": {
+              "max": 1
+            },
+            "ext": "c92nwqlSvOlhWxMQK2ig0AfSpc-NFzuENX1iA1DvhXU4esu9ckg9KGLmMS3zLSTpMIMpHl-HqGXWq3CFiqiFNP6jQ_j7tvVvT7OhDOhlXToqLE6j2hNyuBUuLRDHjCDsvEQpjf0FuDo6XrdLL82bepEeP8wBIaz5GkWW46JGkSowHKT211iyjDB9dts4B_gg"
+          }
+        ],
+        "props": [
+          {
+            "pid": 14,
+            "name": "Color",
+            "values": [
+              {
+                "vid": 29,
+                "name": "WHITE",
+                "image": "//ae-pic-a1.aliexpress-media.com/kf/S360d8b6632d244d1a9960518cb444b6dT.jpg",
+                "propTips": "WHITE"
+              },
+              {
+                "vid": 173,
+                "name": "Blue",
+                "image": "//ae-pic-a1.aliexpress-media.com/kf/S500e881587314ecfb8bce06674a8d354P.jpg",
+                "propTips": "Blue"
+              },
+              {
+                "vid": 193,
+                "name": "black",
+                "image": "//ae-pic-a1.aliexpress-media.com/kf/S06abf98289ac457da1e814db2c46bfa8R.jpg",
+                "propTips": "black"
+              },
+              {
+                "vid": 201447389,
+                "name": "Assorted",
+                "image": "//ae-pic-a1.aliexpress-media.com/kf/S55b07604e5f84430b1911e0e9de73591J.jpg",
+                "propTips": "Assorted"
+              }
+            ]
+          },
+          {
+            "pid": 200000124,
+            "name": "Shoe Size",
+            "values": [
+              {
+                "vid": 200000364,
+                "name": "39",
+                "propTips": "39 Foot Length 9.65\""
+              },
+              {
+                "vid": 100013888,
+                "name": "40",
+                "propTips": "40 Foot Length 9.84\""
+              },
+              {
+                "vid": 100010483,
+                "name": "41",
+                "propTips": "41 Foot Length 10.04\""
+              },
+              {
+                "vid": 200000337,
+                "name": "42",
+                "propTips": "42 Foot Length 10.24\""
+              },
+              {
+                "vid": 200000338,
+                "name": "43",
+                "propTips": "43 Foot Length 10.43\""
+              },
+              {
+                "vid": 100010487,
+                "name": "44",
+                "propTips": "44 Foot Length 10.63\""
+              },
+              {
+                "vid": 3116,
+                "name": "45",
+                "propTips": "45 Foot Length 10.83\""
+              }
+            ]
+          }
+        ],
+        "skuImages": {
+          "14:29": "//ae-pic-a1.aliexpress-media.com/kf/S360d8b6632d244d1a9960518cb444b6dT.jpg",
+          "14:173": "//ae-pic-a1.aliexpress-media.com/kf/S500e881587314ecfb8bce06674a8d354P.jpg",
+          "14:193": "//ae-pic-a1.aliexpress-media.com/kf/S06abf98289ac457da1e814db2c46bfa8R.jpg",
+          "14:201447389": "//ae-pic-a1.aliexpress-media.com/kf/S55b07604e5f84430b1911e0e9de73591J.jpg"
+        }
+      }
+    },
+    "delivery": {
+      "shippingOutDays": 7,
+      "packageDetail": {
+        "weight": 0.7,
+        "length": 32,
+        "height": 12,
+        "width": 15
+      }
+    },
+    "seller": {
+      "sellerId": 2683947306,
+      "storeTitle": "Shop1103675707 Store",
+      "storeId": 1103673727,
+      "companyId": 2683947306,
+      "storeUrl": "//www.aliexpress.com/store/1103673727"
+    }
+  }
+}

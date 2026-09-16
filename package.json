@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --sequential typecheck",
     "lint": "eslint .",
     "db:generate": "pnpm --filter @conveyor/server db:generate",
-    "codex:smoke": "tsx scripts/codex-smoke.ts"
+    "codex:smoke": "tsx scripts/codex-smoke.ts",
+    "capture:fixtures": "tsx scripts/capture-rapidapi-fixtures.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

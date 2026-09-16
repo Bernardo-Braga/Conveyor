@@ -165,12 +165,18 @@ export class JobWorker {
         const secrets = await this.services.secrets.allValues();
         const error = toJobError(step.name, err, secrets);
         makeLog(step.name)(error.message, 'error', error.requestId);
+        try {
+          def.onError?.({ ...this.services, jobId: row.id, productId: row.productId, input: row.input, prior: { ...checkpoints } }, error);
+        } catch (hookErr) {
+          makeLog(step.name)(`onError hook failed: ${hookErr instanceof Error ? hookErr.message : String(hookErr)}`, 'warn');
+        }
         save({ status: 'failed', error, finishedAt: now() });
         emit();
         return;
       }
     }
 
+    def.onDone?.({ ...this.services, jobId: row.id, productId: row.productId, input: row.input, prior: { ...checkpoints } });
     save({ status: 'done', currentStep: null, finishedAt: now() });
     emit();
   }

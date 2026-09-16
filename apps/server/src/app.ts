@@ -8,6 +8,7 @@ import { ZodError } from 'zod';
 import { ConnectionService, SecretName, SetSecretBody, SettingsSection } from '@conveyor/shared';
 import { VERSIONS } from '../../../config/versions.ts';
 import { connectionStatuses } from './connections/index.ts';
+import { productRoutes } from './products/routes.ts';
 import type { AppContext } from './context.ts';
 import { requests } from './db/schema.ts';
 import { env } from './env.ts';
@@ -16,7 +17,7 @@ import { redact } from './http/redact.ts';
 
 const WEB_DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'web', 'dist');
 
-export function createApp(ctx: AppContext) {
+export function createApp(ctx: AppContext, opts: { serveWeb?: boolean } = {}) {
   const app = new Hono();
 
   app.onError(async (err, c) => {
@@ -80,13 +81,14 @@ export function createApp(ctx: AppContext) {
     return c.json(ctx.worker.enqueue('connection_test', { service }), 202);
   });
 
+  api.route('/', productRoutes(ctx));
   app.route('/api', api);
   app.notFound((c) => (c.req.path.startsWith('/api/') ? c.json({ error: 'Not found' }, 404) : c.text('Not found', 404)));
 
   // Built web app, when present. In development Vite serves it and proxies /api here.
-  if (fs.existsSync(WEB_DIST)) {
+  if ((opts.serveWeb ?? !env.isTest) && fs.existsSync(WEB_DIST)) {
     app.use('/*', serveStatic({ root: path.relative(process.cwd(), WEB_DIST) }));
-    app.get('*', (c) => c.html(fs.readFileSync(path.join(WEB_DIST, 'index.html'), 'utf8')));
+    app.get('*', (c) => (c.req.path.startsWith('/api/') ? c.json({ error: 'Not found' }, 404) : c.html(fs.readFileSync(path.join(WEB_DIST, 'index.html'), 'utf8'))));
   }
 
   return app;

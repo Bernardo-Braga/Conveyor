@@ -4,6 +4,7 @@ import { Badge, Button, Field, Panel, inputClass } from '../components/Panel.tsx
 import { api } from '../lib/api.ts';
 import type { LiveState } from '../lib/events.ts';
 import { formatDateTime } from '../lib/format.ts';
+import { QuotaPanel } from '../components/QuotaPanel.tsx';
 
 const SECRET_LABELS: Record<SecretName, string> = {
   rapidapi_key: 'RapidAPI key',
@@ -73,6 +74,8 @@ export function SettingsView({ live }: { live: LiveState }) {
       </Panel>
 
       {conn && <ConnectionSettingsForm value={conn} onSaved={refresh} />}
+
+      <QuotaPanel refreshKey={finished} />
     </div>
   );
 }

@@ -1,0 +1,16 @@
+{ "data": { "product": {
+  "id": "gid://shopify/Product/8001", "handle": "linen-oversized-blazer", "title": "Linen Oversized Blazer", "status": "ACTIVE",
+  "descriptionHtml": "<p>Relaxed linen blazer.</p>", "productType": "Blazers", "tags": ["conveyor", "aliexpress"], "vendor": "Ashworth Studio",
+  "onlineStoreUrl": "https://ashworth-studio.myshopify.com/products/linen-oversized-blazer", "updatedAt": "2026-09-15T10:00:00Z",
+  "featuredMedia": { "preview": { "image": { "url": "https://cdn.shopify.com/s/files/1/blazer.jpg" } } },
+  "media": { "nodes": [
+    { "id": "gid://shopify/MediaImage/9001", "image": { "url": "https://cdn.shopify.com/s/files/1/blazer.jpg", "altText": "Front" } },
+    { "id": "gid://shopify/MediaImage/9002", "image": { "url": "https://cdn.shopify.com/s/files/1/blazer-back.jpg", "altText": null } },
+    { "id": "gid://shopify/Video/9003" }
+  ] },
+  "options": [ { "name": "Size", "optionValues": [ { "name": "S" }, { "name": "M" } ] } ],
+  "variants": { "nodes": [
+    { "id": "gid://shopify/ProductVariant/7001", "title": "S", "sku": "BLZ-S", "price": "89.99", "compareAtPrice": "125.99", "media": { "nodes": [ { "id": "gid://shopify/MediaImage/9001" } ] } },
+    { "id": "gid://shopify/ProductVariant/7002", "title": "M", "sku": null, "price": "89.99", "compareAtPrice": null, "media": { "nodes": [] } }
+  ] }
+}, "shop": { "currencyCode": "USD" } } }

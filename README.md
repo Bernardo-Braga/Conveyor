@@ -19,6 +19,7 @@ A local macOS control panel that takes a supplier link through to a Shopify draf
 | `pnpm lint` | ESLint, including the "one HTTP path" and "no keytar, no shell" rules. |
 | `pnpm db:generate` | Generate a Drizzle migration after changing `apps/server/src/db/schema.ts`. |
 | `pnpm codex:smoke` | Manual. Runs the Codex image test three times (`--runs N --timeout S`). Uses the ChatGPT plan. |
+| `pnpm capture:fixtures <aliexpress link> <1688 link>` | Manual. Exactly 2 RapidAPI requests. Saves the raw bodies in the app database and writes `fixtures/rapidapi/*.json` for the mapper tests. Needs the RapidAPI key in the Keychain. |
 
 ## Layout
 

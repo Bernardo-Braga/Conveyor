@@ -58,7 +58,7 @@ export function App() {
       </header>
       <main className="flex-1">
         <div className="max-w-6xl mx-auto px-6 py-6">
-          {view === 'Line' && <LineView />}
+          {view === 'Line' && <LineView live={live} />}
           {view === 'Studio' && <StudioView />}
           {view === 'Launch' && <LaunchView />}
           {view === 'Settings' && <SettingsView live={live} />}

@@ -1,0 +1,4 @@
+{ "data": { "products": { "nodes": [
+  { "id": "gid://shopify/Product/8001", "title": "Linen Oversized Blazer", "handle": "linen-oversized-blazer", "status": "ACTIVE", "updatedAt": "2026-09-15T10:00:00Z", "featuredMedia": { "preview": { "image": { "url": "https://cdn.shopify.com/s/files/1/blazer_240x240.jpg" } } } },
+  { "id": "gid://shopify/Product/8002", "title": "Linen Wide Trousers", "handle": "linen-wide-trousers", "status": "DRAFT", "updatedAt": "2026-09-14T10:00:00Z", "featuredMedia": null }
+] } }, "extensions": { "cost": { "requestedQueryCost": 14, "actualQueryCost": 6, "throttleStatus": { "maximumAvailable": 2000, "currentlyAvailable": 1994, "restoreRate": 100 } } } }

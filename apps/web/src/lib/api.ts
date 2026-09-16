@@ -30,3 +30,16 @@ export const api = {
   connections: () => request<ConnectionStatus[]>('/connections'),
   testConnection: (service: string) => request<JobView>(`/connections/${service}/test`, { method: 'POST' }),
 };
+
+// Phase 2: the Line
+import type { AddToLineResult, ProductDetail, ProductView, QuotaView } from '@conveyor/shared';
+export const line = {
+  add: (text: string) => request<AddToLineResult>('/line', { method: 'POST', body: JSON.stringify({ text }) }),
+  fromShopify: (shopifyProductId: string) => request<AddToLineResult>('/line/from-shopify', { method: 'POST', body: JSON.stringify({ shopifyProductId }) }),
+  products: () => request<ProductView[]>('/products'),
+  product: (id: number) => request<ProductDetail>(`/products/${id}`),
+  refreshSupplier: (id: number) => request<JobView>(`/products/${id}/refresh-supplier`, { method: 'POST' }),
+  retry: (id: number) => request<JobView>(`/products/${id}/retry`, { method: 'POST' }),
+  remove: (id: number) => request<{ ok: true }>(`/products/${id}`, { method: 'DELETE' }),
+  quota: () => request<QuotaView[]>('/quota'),
+};

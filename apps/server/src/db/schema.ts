@@ -20,6 +20,9 @@ export const products = sqliteTable(
     title: text('title'),
     moq: integer('moq'),
     failure: text('failure', { mode: 'json' }),
+    /** The normalised SourceProduct, mapped from the latest raw supplier response. */
+    source: text('source', { mode: 'json' }),
+    sourceRawId: integer('source_raw_id'),
     listingDraft: text('listing_draft', { mode: 'json' }),
     shopifyProductId: text('shopify_product_id'),
     shopifyHandle: text('shopify_handle'),
@@ -283,3 +286,11 @@ export const jobs = sqliteTable(
   },
   (t) => [index('jobs_status_idx').on(t.status), index('jobs_product_idx').on(t.productId)],
 );
+
+/** Last known RapidAPI quota per platform, from response headers only. Never a quota call. */
+export const supplierQuota = sqliteTable('supplier_quota', {
+  platform: text('platform', { enum: ['aliexpress', '1688'] }).primaryKey(),
+  remaining: integer('remaining'),
+  resetAt: text('reset_at'),
+  updatedAt: updatedAt(),
+});
