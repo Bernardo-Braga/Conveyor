@@ -1,0 +1,170 @@
+{
+  "id": "tmpl_e938d972",
+  "name": "Whitcombe (CBO) 1.6 ",
+  "version": 12,
+  "campaign": {
+    "objective": "OUTCOME_SALES",
+    "buying_type": "AUCTION",
+    "special_ad_categories": [],
+    "name_pattern": "{{date}}_{{template}}",
+    "budget": {
+      "mode": "ABO",
+      "daily_budget_minor": 10000,
+      "lifetime_budget_minor": null,
+      "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+      "bid_amount_minor": null,
+      "roas_average_floor": null,
+      "spend_cap_minor": null
+    },
+    "status_default": "PAUSED"
+  },
+  "adset_count": 5,
+  "adset": {
+    "name_pattern": "{{campaign}} – {{variation}}",
+    "budget": {
+      "daily_budget_minor": 2000,
+      "lifetime_budget_minor": null,
+      "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+      "bid_amount_minor": null,
+      "roas_average_floor": null
+    },
+    "billing_event": "IMPRESSIONS",
+    "optimization_goal": "OFFSITE_CONVERSIONS",
+    "destination_type": "WEBSITE",
+    "schedule": {
+      "start_time": "2026-09-17T10:00:00.000Z",
+      "end_time": null,
+      "dayparting": null
+    },
+    "promoted_object": {
+      "pixel_id": "1000000000000001",
+      "custom_event_type": "PURCHASE"
+    },
+    "attribution_spec": [
+      {
+        "event_type": "CLICK_THROUGH",
+        "window_days": 7
+      },
+      {
+        "event_type": "VIEW_THROUGH",
+        "window_days": 1
+      }
+    ],
+    "targeting": {
+      "geo_locations": {
+        "countries": [
+          "US"
+        ],
+        "regions": [],
+        "cities": [],
+        "zips": [],
+        "custom_locations": []
+      },
+      "excluded_geo_locations": {},
+      "age_min": 18,
+      "age_max": 65,
+      "genders": [
+        1
+      ],
+      "locales": [],
+      "flexible_spec": [
+        {
+          "interests": [],
+          "behaviors": [],
+          "demographics": []
+        }
+      ],
+      "exclusions": {
+        "interests": [],
+        "behaviors": []
+      },
+      "custom_audiences": [],
+      "excluded_custom_audiences": [],
+      "advantage_audience": true,
+      "placements": {
+        "mode": "advantage",
+        "manual": {
+          "publisher_platforms": [
+            "facebook",
+            "instagram"
+          ],
+          "facebook_positions": [
+            "feed",
+            "reels",
+            "story",
+            "search",
+            "video_feeds",
+            "right_hand_column",
+            "marketplace"
+          ],
+          "instagram_positions": [
+            "stream",
+            "reels",
+            "explore",
+            "explore_home",
+            "profile_feed",
+            "story"
+          ],
+          "device_platforms": [
+            "mobile",
+            "desktop"
+          ]
+        }
+      }
+    }
+  },
+  "ads_per_adset": 5,
+  "ad": {
+    "name_pattern": "{{creative_filename}}",
+    "format": "single",
+    "creatives_per_ad": 1,
+    "distribution_mode": "one_per_ad",
+    "page_id": "",
+    "instagram_user_id": null,
+    "default_cta": "SHOP_NOW",
+    "primary_text": "The classic three-part cap toe, built in cow split leather for men who need one pair that works every day of a working week. High-shine finish, closed lacing, and a low block heel on a wear-resistant rubber sole with real grip.",
+    "headline": "Thackeray Cap Toe Oxfords",
+    "description": "",
+    "destination_url": "https://example-store.com/products/thackeray-cap-toe-oxfords",
+    "url_params": "utm_source=meta&utm_campaign={{campaign}}",
+    "advantage_creative_enhancements": false,
+    "status_default": "PAUSED"
+  },
+  "adset_variants": [
+    {
+      "name": "US - Broad",
+      "country": "",
+      "age_band": "",
+      "interests": [],
+      "custom_audiences": []
+    },
+    {
+      "name": "US - Interest 1",
+      "country": "",
+      "age_band": "",
+      "interests": [],
+      "custom_audiences": []
+    },
+    {
+      "name": "US - Interest 2",
+      "country": "",
+      "age_band": "",
+      "interests": [],
+      "custom_audiences": []
+    },
+    {
+      "name": "US - Interest 3",
+      "country": "",
+      "age_band": "",
+      "interests": [],
+      "custom_audiences": []
+    },
+    {
+      "name": "US - Interest 4",
+      "country": "",
+      "age_band": "",
+      "interests": [],
+      "custom_audiences": []
+    }
+  ]
+}

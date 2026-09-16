@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/schibsted-grotesk';
+
+/* Design tokens. Light first; dark follows the system setting. */
+:root {
+  color-scheme: light dark;
+  --bg: #eef0f3;          /* fog grey */
+  --panel: #ffffff;
+  --panel-2: #f6f7f9;
+  --line: #d9dde3;
+  --ink: #16191f;
+  --ink-2: #4b5563;
+  --ink-3: #8a94a3;
+  --cobalt: #1f4fd8;      /* actions */
+  --cobalt-ink: #ffffff;
+  --cobalt-soft: #e4eafb;
+  --amber: #d98a06;       /* waiting on you */
+  --amber-soft: #fbefd7;
+  --green: #1f9d55;       /* live */
+  --green-soft: #dcf3e6;
+  --red: #c2352b;
+  --red-soft: #f9e1de;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --panel: #1d2026;
+    --panel-2: #23272e;
+    --line: #333944;
+    --ink: #eceff3;
+    --ink-2: #b4bcc8;
+    --ink-3: #7c8595;
+    --cobalt: #6d8ff0;
+    --cobalt-ink: #0c1a3f;
+    --cobalt-soft: #1f2a4a;
+    --amber: #f0a72a;
+    --amber-soft: #3d2f12;
+    --green: #3fbf78;
+    --green-soft: #143324;
+    --red: #ef6b62;
+    --red-soft: #3f1c19;
+  }
+}
+
+@theme inline {
+  --color-fog: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-ink: var(--cobalt-ink);
+  --color-cobalt-soft: var(--cobalt-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-green: var(--green);
+  --color-green-soft: var(--green-soft);
+  --color-red: var(--red);
+  --color-red-soft: var(--red-soft);
+  --font-sans: 'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --radius-panel: 12px;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+input, button, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: 0.55; }
+
+/* The four-stop progress track: the one expressive element. */
+.track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; align-items: center; }
+.track-stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.track-stop::before, .track-stop::after {
+  content: ''; position: absolute; top: 9px; height: 2px; width: 50%; background: var(--line);
+}
+.track-stop::before { left: 0; }
+.track-stop::after { right: 0; }
+.track-stop:first-child::before, .track-stop:last-child::after { display: none; }
+.track-stop[data-status='done']::before, .track-stop[data-status='done']::after,
+.track-stop[data-status='active']::before, .track-stop[data-status='waiting']::before,
+.track-stop[data-status='live']::before, .track-stop[data-status='live']::after { background: var(--cobalt); }
+.track-dot {
+  position: relative; z-index: 1; width: 20px; height: 20px; border-radius: 999px;
+  border: 2px solid var(--line); background: var(--panel); box-sizing: border-box;
+  transition: background 200ms, border-color 200ms, box-shadow 200ms;
+}
+.track-stop[data-status='done'] .track-dot { background: var(--cobalt); border-color: var(--cobalt); }
+.track-stop[data-status='active'] .track-dot { border-color: var(--cobalt); box-shadow: 0 0 0 4px var(--cobalt-soft); animation: pulse 1.6s ease-in-out infinite; }
+.track-stop[data-status='waiting'] .track-dot { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 0 4px var(--amber-soft); }
+.track-stop[data-status='live'] .track-dot { background: var(--green); border-color: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
+.track-stop[data-status='attention'] .track-dot { background: var(--red); border-color: var(--red); box-shadow: 0 0 0 4px var(--red-soft); }
+.track-label { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.track-stop[data-status='active'] .track-label, .track-stop[data-status='done'] .track-label { color: var(--ink-2); }
+.track-stop[data-status='waiting'] .track-label { color: var(--amber); }
+.track-stop[data-status='live'] .track-label { color: var(--green); }
+.track-stop[data-status='attention'] .track-label { color: var(--red); }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 4px var(--cobalt-soft); } 50% { box-shadow: 0 0 0 8px transparent; } }
+@media (prefers-reduced-motion: reduce) { .track-stop[data-status='active'] .track-dot { animation: none; } }

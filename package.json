@@ -1,0 +1,30 @@
+{
+  "name": "conveyor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local control panel: supplier link to Shopify draft, AI creatives and a paused Meta campaign.",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @conveyor/server --filter @conveyor/web dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --sequential typecheck",
+    "lint": "eslint .",
+    "db:generate": "pnpm --filter @conveyor/server db:generate",
+    "codex:smoke": "tsx scripts/codex-smoke.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.5",
+    "eslint": "^10.10.0",
+    "tsx": "^4.23.13",
+    "typescript": "~5.9.0",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.1"
+  }
+}
