@@ -5,6 +5,7 @@ import type { EventBus } from '../events/bus.ts';
 import type { LedgerClient } from '../http/ledgerClient.ts';
 import type { Secrets } from '../secrets/keychain.ts';
 import type { SettingsStore } from '../settings/store.ts';
+import type { WriterSet } from '../listing/writers/index.ts';
 
 /** Everything a step may touch. Outside calls go through `ledger` only. */
 export interface Services {
@@ -13,6 +14,10 @@ export interface Services {
   secrets: Secrets;
   settings: SettingsStore;
   bus: EventBus;
+  /** Local listing writers (Claude Code, Codex) plus the optional API writer. */
+  writers: WriterSet;
+  /** Where product folders live. Tests point this at a temporary directory. */
+  dataDir: string;
 }
 
 export interface StepContext<I> extends Services {

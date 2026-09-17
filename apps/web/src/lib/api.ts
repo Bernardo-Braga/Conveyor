@@ -43,3 +43,6 @@ export const line = {
   remove: (id: number) => request<{ ok: true }>(`/products/${id}`, { method: 'DELETE' }),
   quota: () => request<QuotaView[]>('/quota'),
 };
+export const listing = {
+  write: (id: number) => request<JobView>(`/products/${id}/write-listing`, { method: 'POST' }),
+};

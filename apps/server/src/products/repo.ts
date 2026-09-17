@@ -1,5 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
-import { ProductDetail, ProductView, SourceProduct, type JobError, type ProductState } from '@conveyor/shared';
+import { ListingDraft, ProductDetail, ProductView, SourceProduct, type JobError, type Pricing, type ProductState } from '@conveyor/shared';
 import type { Db } from '../db/index.ts';
 import { products, supplierRaw } from '../db/schema.ts';
 import { thumbnailUrl } from '../suppliers/cleanImages.ts';
@@ -29,6 +29,8 @@ export function toProductView(row: Row): ProductView {
     shopifyHandle: row.shopifyHandle,
     snapshotAt: row.snapshotAt,
     failure: (row.failure as JobError | null) ?? null,
+    listing: listingSummary(row),
+    adminUrl: row.shopifyProductId ? adminUrlFor(row.shopifyProductId) : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });
@@ -57,4 +59,23 @@ export function setState(db: Db, id: number, state: ProductState, patch: Partial
 
 export function markAttention(db: Db, id: number, failure: JobError): void {
   setState(db, id, 'needs_attention', { failure });
+}
+
+function listingSummary(row: Row): ProductView['listing'] {
+  const draft = row.listingDraft ? ListingDraft.safeParse(row.listingDraft) : null;
+  const extra = (row.highlights as { pricing?: Pricing; notes?: string[]; variantCount?: number; imageCount?: number } | null) ?? null;
+  if (!draft?.success && !extra?.pricing) return null;
+  return {
+    title: draft?.success ? draft.data.title : null,
+    needsCheck: draft?.success ? draft.data.needsCheck : [],
+    priceMinor: extra?.pricing?.priceMinor ?? null,
+    compareAtMinor: extra?.pricing?.compareAtMinor ?? null,
+    marginMinor: extra?.pricing?.marginMinor ?? null,
+    notes: extra?.notes ?? [],
+  };
+}
+
+/** Store-agnostic admin deep link; Shopify redirects to the right store for a logged-in owner. */
+export function adminUrlFor(shopifyProductId: string): string {
+  return `https://admin.shopify.com/products/${shopifyProductId.split('/').pop()}`;
 }

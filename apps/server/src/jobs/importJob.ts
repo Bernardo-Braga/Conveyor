@@ -13,7 +13,7 @@ import { JobStepError, type JobDefinition } from './types.ts';
  * exists (in the route, 0 requests). The job: quota → fetch (saves raw first) → map → finish.
  * Only `fetch` leaves the machine, and it reuses a saved response unless `refresh` is set.
  */
-export function importJob(deps: { rapidapi: RapidApiClient; quota: QuotaStore }): JobDefinition<ImportJobInput> {
+export function importJob(deps: { rapidapi: RapidApiClient; quota: QuotaStore; enqueue: (type: 'write_listing', input: unknown, productId: number) => { id: number }; autoListing?: boolean }): JobDefinition<ImportJobInput> {
   return {
     type: 'import',
     input: ImportJobInput,
@@ -84,8 +84,13 @@ export function importJob(deps: { rapidapi: RapidApiClient; quota: QuotaStore })
         name: 'finish',
         async run(ctx) {
           setState(ctx.db, ctx.productId!, 'writing_listing');
-          ctx.log('Ready for the listing step.');
-          return null;
+          if (ctx.input.refresh && !deps.autoListing) {
+            ctx.log('Supplier data refreshed. Use "Rewrite listing" to update the draft (2 requests).');
+            return { listingJobId: null };
+          }
+          const job = deps.enqueue('write_listing', { productId: ctx.productId!, rewrite: ctx.input.refresh }, ctx.productId!);
+          ctx.log(`Ready for the listing step. Queued write_listing job #.`);
+          return { listingJobId: job.id };
         },
       },
     ],

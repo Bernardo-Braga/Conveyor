@@ -1,0 +1,1 @@
+{ "data": { "productOperation": { "id": "gid://shopify/ProductSetOperation/5001", "status": "COMPLETE", "product": { "id": "gid://shopify/Product/9102", "handle": "big-variant-product", "title": "Big variant product", "status": "DRAFT" }, "userErrors": [] } } }

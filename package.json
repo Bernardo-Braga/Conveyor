@@ -17,7 +17,8 @@
     "lint": "eslint .",
     "db:generate": "pnpm --filter @conveyor/server db:generate",
     "codex:smoke": "tsx scripts/codex-smoke.ts",
-    "capture:fixtures": "tsx scripts/capture-rapidapi-fixtures.ts"
+    "capture:fixtures": "tsx scripts/capture-rapidapi-fixtures.ts",
+    "writer:smoke": "tsx scripts/listing-writer-smoke.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

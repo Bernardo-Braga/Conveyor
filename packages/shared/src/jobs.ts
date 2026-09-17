@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const JobType = z.enum([
   'connection_test',
   'import',
+  'download_photos',
   'write_listing',
   'create_draft',
   'pull_product',

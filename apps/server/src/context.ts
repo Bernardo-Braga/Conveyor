@@ -10,9 +10,11 @@ import { ShopifyTokenCache } from './shopify/token.ts';
 import { connectionTestJob } from './connections/index.ts';
 import { importJob } from './jobs/importJob.ts';
 import { pullProductJob } from './jobs/pullProductJob.ts';
+import { listingJob } from './jobs/listingJob.ts';
 import { ShopifyClient } from './shopify/client.ts';
 import { QuotaStore } from './suppliers/quota.ts';
 import { RapidApiClient } from './suppliers/rapidapi.ts';
+import { makeWriters, type RunCli, type WriterSet } from './listing/writers/index.ts';
 
 export interface AppContext extends Services {
   opened: OpenedDb;
@@ -22,6 +24,8 @@ export interface AppContext extends Services {
   shopify: ShopifyClient;
   quota: QuotaStore;
   rapidapi: RapidApiClient;
+  writers: WriterSet;
+  dataDir: string;
   close(): Promise<void>;
 }
 
@@ -29,6 +33,9 @@ export interface ContextOptions {
   dbFile?: string;
   secretStore?: SecretStore;
   fetchImpl?: typeof fetch;
+  /** Tests inject a fake CLI runner so no Claude Code or Codex subprocess starts. */
+  runCli?: RunCli;
+  dataDir?: string;
 }
 
 /** Wires the server together. Tests pass `:memory:`, a MemoryStore and a fake fetch. */
@@ -40,13 +47,16 @@ export function createContext(opts: ContextOptions = {}): AppContext {
   const secrets = new Secrets(store, db);
   const ledger = new LedgerClient({ db, bus, secretsForRedaction: () => secrets.allValues(), ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}) });
   const settings = new SettingsStore(db);
-  const services: Services = { db, ledger, secrets, settings, bus };
+  const writers = makeWriters({ ledger, secrets, ...(opts.runCli ? { run: opts.runCli } : {}) });
+  const services: Services = { db, ledger, secrets, settings, bus, writers, dataDir: opts.dataDir ?? env.dataDir };
   const shopifyTokens = new ShopifyTokenCache(ledger);
   const shopify = new ShopifyClient({ ledger, secrets, settings, tokens: shopifyTokens });
   const quota = new QuotaStore(db);
   const rapidapi = new RapidApiClient({ db, ledger, secrets, quota });
-  const registry = new JobRegistry().register(connectionTestJob(shopifyTokens)).register(importJob({ rapidapi, quota })).register(pullProductJob({ shopify }));
+  const registry = new JobRegistry().register(connectionTestJob(shopifyTokens)).register(pullProductJob({ shopify })).register(listingJob({ shopify, writers }));
   const worker = new JobWorker(services, registry);
+  // The import job chains into the listing job (a pasted link becomes a draft in 3 requests).
+  registry.register(importJob({ rapidapi, quota, enqueue: (type, input, productId) => worker.enqueue(type, input, productId) }));
   return {
     ...services,
     opened,
@@ -56,6 +66,7 @@ export function createContext(opts: ContextOptions = {}): AppContext {
     shopify,
     quota,
     rapidapi,
+    writers,
     async close() {
       await worker.stop();
       opened.close();

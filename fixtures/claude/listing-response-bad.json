@@ -1,0 +1,15 @@
+{
+  "id": "msg_01ListingBad",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 2140, "output_tokens": 300, "cache_creation_input_tokens": 2100, "cache_read_input_tokens": 0 },
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"title\":\"Men's slip-on loafers, retro slip-on casual shoes, suitable for daily commuting, versatile for all seasons, low-top\",\"descriptionHtml\":\"<p>Lightweight slip-on loafers with a soft sole for everyday wear.</p>\",\"highlights\":[\"Slips on\",\"Soft sole\",\"Breathable\"],\"seo\":{\"title\":\"Slip-on loafers\",\"description\":\"Lightweight slip-on loafers with a soft sole and breathable mesh upper for daily wear.\"},\"tags\":[\"loafers\"],\"productType\":\"Loafers\",\"optionNames\":[],\"optionValues\":[],\"imageOrder\":[0],\"needsCheck\":[]}"
+    }
+  ]
+}

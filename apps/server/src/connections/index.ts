@@ -5,6 +5,7 @@ import { MissingSecretError, LABELS } from '../secrets/keychain.ts';
 import type { JobDefinition, Services } from '../jobs/types.ts';
 import type { ShopifyTokenCache } from '../shopify/token.ts';
 import { testClaude } from './claude.ts';
+import { testClaudeCode } from './claudeCode.ts';
 import { testCodex } from './codex.ts';
 import { testMeta } from './meta.ts';
 import { testOpenAI } from './openai.ts';
@@ -12,6 +13,7 @@ import { testShopify } from './shopify.ts';
 import type { ConnectionDeps, ConnectionTester } from './types.ts';
 
 export const TESTERS: Partial<Record<ConnectionService, ConnectionTester>> = {
+  claude_code: testClaudeCode,
   claude: testClaude,
   openai: testOpenAI,
   shopify: testShopify,
@@ -20,7 +22,9 @@ export const TESTERS: Partial<Record<ConnectionService, ConnectionTester>> = {
   // rapidapi: no test. Its status comes from the last import (PLAN.md section 10).
 };
 
+/** What must be set before a test can run. The plan-based CLIs need no key at all. */
 const REQUIRED_SECRETS: Record<ConnectionService, SecretName[]> = {
+  claude_code: [],
   claude: ['claude_api_key'],
   openai: ['openai_api_key'],
   shopify: ['shopify_client_id', 'shopify_client_secret'],
@@ -28,6 +32,9 @@ const REQUIRED_SECRETS: Record<ConnectionService, SecretName[]> = {
   codex: [],
   rapidapi: ['rapidapi_key'],
 };
+
+/** Services Conveyor works without. The UI marks them so a blank row does not look broken. */
+export const OPTIONAL_SERVICES: ReadonlySet<ConnectionService> = new Set(['claude', 'openai']);
 
 export async function runConnectionTest(service: ConnectionService, deps: ConnectionDeps): Promise<ConnectionTestResult> {
   const tester = TESTERS[service];

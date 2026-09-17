@@ -1,0 +1,15 @@
+{
+  "id": "msg_01ListingFixture",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 2140, "output_tokens": 612, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 1180 },
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"title\":\"Soft-sole slip-on loafers for men\",\"descriptionHtml\":\"<p>Lightweight slip-on loafers with a soft EVA and rubber sole for everyday commuting.</p><p>The mesh upper keeps feet cool, and the no-lace design slips on in seconds.</p><ul><li>PU and mesh upper</li><li>EVA and rubber outsole</li><li>Round toe, low top</li></ul>\",\"highlights\":[\"Slips on with no laces\",\"Soft, flexible sole\",\"Breathable mesh upper\"],\"seo\":{\"title\":\"Soft-sole slip-on loafers for men\",\"description\":\"Lightweight slip-on loafers with a soft sole and breathable mesh upper, made for daily commuting in any season.\"},\"tags\":[\"loafers\",\"slip-on\",\"men\",\"casual shoes\"],\"productType\":\"Loafers\",\"optionNames\":[{\"from\":\"Color\",\"to\":\"Colour\"},{\"from\":\"Shoe Size\",\"to\":\"Size\"}],\"optionValues\":[{\"from\":\"WHITE\",\"to\":\"White\"},{\"from\":\"Blue\",\"to\":\"Blue\"},{\"from\":\"black\",\"to\":\"Black\"},{\"from\":\"Assorted\",\"to\":\"Assorted\"},{\"from\":\"39\",\"to\":\"EU 39\"},{\"from\":\"40\",\"to\":\"EU 40\"},{\"from\":\"41\",\"to\":\"EU 41\"},{\"from\":\"42\",\"to\":\"EU 42\"},{\"from\":\"43\",\"to\":\"EU 43\"},{\"from\":\"44\",\"to\":\"EU 44\"},{\"from\":\"45\",\"to\":\"EU 45\"}],\"imageOrder\":[0,2,1,4,5],\"needsCheck\":[\"Sole material is listed as EVA and rubber by the supplier; confirm before stating it\"]}"
+    }
+  ]
+}

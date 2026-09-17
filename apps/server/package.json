@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
     "@conveyor/shared": "workspace:*",
     "@hono/node-server": "^2.1.1",
     "@napi-rs/keyring": "^2.1.0",

@@ -26,8 +26,11 @@ const BODY = {
 };
 const LINK = 'https://www.aliexpress.com/item/1005006123456789.html?spm=x';
 
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+const photoRoute = { 'alicdn.com': () => new Response(PNG, { status: 200, headers: { 'content-type': 'image/jpeg' } }) };
+
 async function setup(routes: Parameters<typeof fakeFetch>[0] = { 'rapidapi.com': () => json(BODY, 200, { 'x-ratelimit-requests-remaining': '400', 'x-ratelimit-requests-reset': '1000' }) }) {
-  const ff = fakeFetch(routes);
+  const ff = fakeFetch({ ...photoRoute, ...routes });
   const ctx = testContext(ff.impl);
   await ctx.secrets.set('rapidapi_key', 'rapidapiSecret000');
   const app = createApp(ctx);
@@ -43,12 +46,13 @@ describe('import flow', () => {
     expect(res.status).toBe(202);
     const r = (await res.json()) as { kind: string; productId: number; jobId: number };
     expect(r.kind).toBe('importing');
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce(); // the import job only; the listing job has its own tests
 
     expect(t.rapidCalls()).toBe(1);
     const job = t.ctx.worker.view(r.jobId);
     expect(job.status).toBe('done');
     expect(job.completedSteps).toEqual(['quota', 'fetch', 'map', 'finish']);
+    expect(t.ctx.worker.list().some((j) => j.type === 'write_listing' && j.status === 'queued')).toBe(true);
 
     const detail = (await (await t.app.request(`/api/products/${r.productId}`)).json()) as { state: string; title: string; costMinor: number; currency: string; imageCount: number; thumbnail: string; source: { images: string[]; variants: { optionValues: string[]; costMinor: number }[]; options: { name: string }[]; descriptionText: string; descriptionImages: string[] } };
     expect(detail.state).toBe('writing_listing');
@@ -72,7 +76,7 @@ describe('import flow', () => {
   it('pasting the same link again (any URL shape) costs 0 requests', async () => {
     const t = await setup();
     await t.post('/api/line', { text: LINK });
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce();
     const again = (await (await t.post('/api/line', { text: 'https://pt.aliexpress.com/item/1005006123456789.html' })).json()) as { kind: string; productId: number };
     expect(again.kind).toBe('duplicate');
     expect(t.rapidCalls()).toBe(1);
@@ -86,7 +90,7 @@ describe('import flow', () => {
     expect(t.rapidCalls()).toBe(1);
     const r = (await (await t.post('/api/line', { text: LINK })).json()) as { kind: string; productId: number; jobId: number };
     expect(r.kind).toBe('importing');
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce();
     expect(t.rapidCalls()).toBe(1);
     const job = t.ctx.worker.view(r.jobId);
     expect(job.status).toBe('done');
@@ -107,7 +111,7 @@ describe('import flow', () => {
     const t = await setup();
     t.ctx.quota.updateFromHeaders('aliexpress', new Headers({ 'x-ratelimit-requests-remaining': '3', 'x-ratelimit-requests-reset': '5000' }));
     const r = (await (await t.post('/api/line', { text: LINK })).json()) as { productId: number; jobId: number };
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce();
     expect(t.rapidCalls()).toBe(0);
     const job = t.ctx.worker.view(r.jobId);
     expect(job.status).toBe('failed');
@@ -119,7 +123,7 @@ describe('import flow', () => {
     // Raising the threshold and retrying resumes at the quota step and then fetches once.
     t.ctx.settings.set('import', { quotaPauseThreshold: 0 });
     await t.app.request(`/api/products/${r.productId}/retry`, { method: 'POST' });
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce();
     expect(t.rapidCalls()).toBe(1);
     expect(t.ctx.worker.view(r.jobId).status).toBe('done');
     await t.ctx.close();
@@ -128,7 +132,7 @@ describe('import flow', () => {
   it('a supplier error is final: 1 request, needs_attention with the code, and a retry does not re-fetch a 4xx', async () => {
     const t = await setup({ 'rapidapi.com': () => json({ result: { status: { code: 404, data: 'error', msg: 'Item not found' } } }) });
     const r = (await (await t.post('/api/line', { text: LINK })).json()) as { productId: number; jobId: number };
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce();
     expect(t.rapidCalls()).toBe(1);
     const job = t.ctx.worker.view(r.jobId);
     expect(job.status).toBe('failed');
@@ -141,10 +145,10 @@ describe('import flow', () => {
   it('explicit refresh costs exactly 1 request and re-maps', async () => {
     const t = await setup();
     const r = (await (await t.post('/api/line', { text: LINK })).json()) as { productId: number };
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce();
     const res = await t.app.request(`/api/products/${r.productId}/refresh-supplier`, { method: 'POST' });
     expect(res.status).toBe(202);
-    await t.ctx.worker.drain();
+    await t.ctx.worker.drain(); // the queued listing job runs too; only RapidAPI calls are counted here
     expect(t.rapidCalls()).toBe(2);
     expect(t.ctx.db.select().from(supplierRaw).all()).toHaveLength(2);
     expect(t.ledger().filter((l) => l.service === 'rapidapi').map((l) => l.productId)).toEqual([r.productId, r.productId]);
@@ -158,7 +162,7 @@ describe('import flow', () => {
     });
     const r = (await (await t.post('/api/line', { text: 'https://a.aliexpress.com/_mNc0Zl' })).json()) as { kind: string; jobId: number };
     expect(r.kind).toBe('importing');
-    await t.ctx.worker.drain();
+    await t.ctx.worker.runOnce(); // the import job only; the listing job has its own tests
     expect(t.ledger().map((l) => l.purpose)).toEqual(['short_link', 'item_detail']);
     await t.ctx.close();
   });

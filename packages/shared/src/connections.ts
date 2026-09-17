@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
-/** Services with a connection test. RapidAPI has none: its status comes from the last import. */
-export const ConnectionService = z.enum(['claude', 'openai', 'shopify', 'meta', 'codex', 'rapidapi']);
+/**
+ * Services with a connection test. RapidAPI has none: its status comes from the last import.
+ * `claude_code` and `codex` are local CLIs on your own plans; `claude` is the optional API key.
+ */
+export const ConnectionService = z.enum(['claude_code', 'codex', 'claude', 'openai', 'shopify', 'meta', 'rapidapi']);
 export type ConnectionService = z.infer<typeof ConnectionService>;
 
 export const ConnectionTestResult = z.object({

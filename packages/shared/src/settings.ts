@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ListingWriterId } from './listing.ts';
 
 /** Non-secret identifiers each connection needs. Keys themselves live in the Keychain. */
 export const ConnectionSettings = z.object({
@@ -41,6 +42,10 @@ export const ImportSettings = z.object({
   }).prefault({}),
   listing: z.object({
     brandVoice: z.string().default(''),
+    /** Default writer. A usage limit hands off to the other local writer. */
+    writer: ListingWriterId.default('claude_code'),
+    /** Show the writer up to MAX_PHOTOS product photos, downloaded once into the product's folder. */
+    showPhotos: z.boolean().default(true),
     createAsDraft: z.literal(true).default(true),
     tag: z.string().default('conveyor'),
     includeDescriptionImages: z.boolean().default(false),
@@ -49,9 +54,17 @@ export const ImportSettings = z.object({
 export type ImportSettings = z.infer<typeof ImportSettings>;
 
 /** Every settings section has a name and a schema. Later phases add sections here. */
+/** Internal: the daily CNY rate cache (one request per day). Not user-edited. */
+export const RatesCache = z.object({
+  usdPerCny: z.number().positive().nullable().default(null),
+  fetchedOn: z.string().nullable().default(null),
+});
+export type RatesCache = z.infer<typeof RatesCache>;
+
 export const SETTINGS_SECTIONS = {
   connections: ConnectionSettings,
   import: ImportSettings,
+  rates: RatesCache,
 } as const;
 export type SettingsSection = keyof typeof SETTINGS_SECTIONS;
 export const SettingsSection = z.enum(Object.keys(SETTINGS_SECTIONS) as [SettingsSection, ...SettingsSection[]]);

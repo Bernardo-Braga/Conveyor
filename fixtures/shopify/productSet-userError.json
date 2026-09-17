@@ -1,0 +1,1 @@
+{ "data": { "productSet": { "product": null, "productSetOperation": null, "userErrors": [ { "field": ["input", "variants", "0", "price"], "message": "Price must be greater than or equal to 0", "code": "INVALID" } ] } } }

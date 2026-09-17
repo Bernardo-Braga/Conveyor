@@ -6,6 +6,7 @@ A local macOS control panel that takes a supplier link through to a Shopify draf
 
 - Node 24 or newer, pnpm 10 (`corepack enable` picks the pinned version), `brew install exiftool`.
 - Codex CLI installed and signed in with ChatGPT (`codex login`).
+- Claude Code installed and signed in with your Claude plan (`claude auth login`). No Claude Console account or `ANTHROPIC_API_KEY` is needed; Conveyor strips keys from the writer's environment so the plan login is always used.
 - Data lives in `~/Library/Application Support/Conveyor/data`. Override with `CONVEYOR_DATA_DIR`.
 - Keys live in the macOS Keychain (service `Conveyor`). Add them under Settings, Connections.
 
@@ -19,6 +20,7 @@ A local macOS control panel that takes a supplier link through to a Shopify draf
 | `pnpm lint` | ESLint, including the "one HTTP path" and "no keytar, no shell" rules. |
 | `pnpm db:generate` | Generate a Drizzle migration after changing `apps/server/src/db/schema.ts`. |
 | `pnpm codex:smoke` | Manual. Runs the Codex image test three times (`--runs N --timeout S`). Uses the ChatGPT plan. |
+| `pnpm writer:smoke` | Manual. Writes a listing with both local writers from the captured fixture (`--writer claude_code\|codex\|both`). Uses your Claude and ChatGPT plans, 0 API requests. |
 | `pnpm capture:fixtures <aliexpress link> <1688 link>` | Manual. Exactly 2 RapidAPI requests. Saves the raw bodies in the app database and writes `fixtures/rapidapi/*.json` for the mapper tests. Needs the RapidAPI key in the Keychain. |
 
 ## Layout

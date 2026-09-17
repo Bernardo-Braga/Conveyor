@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AddToLineResult, ProductView } from '@conveyor/shared';
 import { Badge, Button, Panel, inputClass } from '../components/Panel.tsx';
 import { Track } from '../components/Track.tsx';
-import { ApiError, line } from '../lib/api.ts';
+import { ApiError, line, listing } from '../lib/api.ts';
 import type { LiveState } from '../lib/events.ts';
 import { formatDateTime, formatMoney, sentence } from '../lib/format.ts';
 
@@ -149,7 +149,16 @@ function ProductRow({ p, highlighted, onChange }: { p: ProductView; highlighted:
           {p.variantCount > 0 && <span>{p.variantCount} variant{p.variantCount === 1 ? '' : 's'}</span>}
           {p.imageCount > 0 && <span>{p.imageCount} image{p.imageCount === 1 ? '' : 's'}</span>}
           {p.shopifyHandle && <span>{p.shopifyHandle}</span>}
+          {p.listing?.priceMinor != null && (
+            <span>
+              Price {formatMoney(p.listing.priceMinor)}
+              {p.listing.compareAtMinor != null && ` (was ${formatMoney(p.listing.compareAtMinor)})`}
+              {p.listing.marginMinor != null && `, margin ${formatMoney(p.listing.marginMinor)}`}
+            </span>
+          )}
         </p>
+        {p.listing && p.listing.needsCheck.length > 0 && <p className="text-xs text-amber mt-1">Verify in Shopify: {p.listing.needsCheck.join(' · ')}</p>}
+        {p.listing && p.listing.notes.length > 0 && <p className="text-xs text-ink-3 mt-1">{p.listing.notes.join(' ')}</p>}
         {p.failure && (
           <p className="text-xs text-red mt-1">
             <strong>{p.failure.step}</strong>: {p.failure.message}
@@ -160,6 +169,16 @@ function ProductRow({ p, highlighted, onChange }: { p: ProductView; highlighted:
       </div>
       <Track state={p.state} compact />
       <div className="flex items-center gap-1 shrink-0">
+        {p.adminUrl && (
+          <a className="px-3 py-1.5 text-sm rounded-md border border-line bg-panel hover:bg-panel-2" href={p.adminUrl} target="_blank" rel="noreferrer">
+            Open in Shopify
+          </a>
+        )}
+        {(p.state === 'writing_listing' || p.state === 'editing_in_shopify' || (p.state === 'needs_attention' && p.platform)) && (
+          <Button kind="quiet" disabled={busy} title="One Claude request plus one Shopify request" onClick={() => act(() => listing.write(p.id))}>
+            {p.shopifyProductId ? 'Rewrite listing' : 'Write listing'}
+          </Button>
+        )}
         {p.failure && (
           <Button disabled={busy} onClick={() => act(() => line.retry(p.id))}>
             Retry

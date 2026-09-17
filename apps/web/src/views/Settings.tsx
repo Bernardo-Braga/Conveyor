@@ -5,6 +5,7 @@ import { api } from '../lib/api.ts';
 import type { LiveState } from '../lib/events.ts';
 import { formatDateTime } from '../lib/format.ts';
 import { QuotaPanel } from '../components/QuotaPanel.tsx';
+import { ImportSettingsPanel } from '../components/ImportSettingsPanel.tsx';
 
 const SECRET_LABELS: Record<SecretName, string> = {
   rapidapi_key: 'RapidAPI key',
@@ -17,12 +18,16 @@ const SECRET_LABELS: Record<SecretName, string> = {
 
 const SERVICE_LABELS: Record<ConnectionStatus['service'], string> = {
   rapidapi: 'RapidAPI',
-  claude: 'Claude',
+  claude_code: 'Claude Code',
+  claude: 'Claude API',
   shopify: 'Shopify',
   openai: 'OpenAI',
   codex: 'Codex CLI',
   meta: 'Meta',
 };
+
+/** Conveyor works without these; a blank row is not a problem. */
+const OPTIONAL: ReadonlySet<ConnectionStatus['service']> = new Set(['claude', 'openai']);
 
 export function SettingsView({ live }: { live: LiveState }) {
   const [secrets, setSecrets] = useState<SecretStatus[]>([]);
@@ -57,7 +62,9 @@ export function SettingsView({ live }: { live: LiveState }) {
       {error && <div className="px-4 py-2 rounded-md bg-red-soft text-red text-sm">{error}</div>}
 
       <Panel title="Connections">
-        <p className="text-sm text-ink-2 mb-4">Keys are stored in the macOS Keychain and never leave this Mac. Each test makes one read-only call. RapidAPI has no test: its status comes from the last import.</p>
+        <p className="text-sm text-ink-2 mb-4">
+          Keys are stored in the macOS Keychain and never leave this Mac. Claude Code and Codex run on your own plans, so their tests are local and need no key. The other tests make one read-only call each. RapidAPI has no test: its status comes from the last import.
+        </p>
         <div className="divide-y divide-line">
           {statuses.map((s) => (
             <ConnectionRow key={s.service} status={s} live={live} />
@@ -76,6 +83,8 @@ export function SettingsView({ live }: { live: LiveState }) {
       {conn && <ConnectionSettingsForm value={conn} onSaved={refresh} />}
 
       <QuotaPanel refreshKey={finished} />
+
+      <ImportSettingsPanel />
     </div>
   );
 }
@@ -86,13 +95,16 @@ function ConnectionRow({ status, live }: { status: ConnectionStatus; live: LiveS
   const last = status.last;
   return (
     <div className="py-3 flex items-start gap-4">
-      <div className="w-28 shrink-0 text-sm font-medium pt-1">{SERVICE_LABELS[status.service]}</div>
+      <div className="w-28 shrink-0 text-sm font-medium pt-1">
+        {SERVICE_LABELS[status.service]}
+        {OPTIONAL.has(status.service) && <span className="block text-xs font-normal text-ink-3">Optional</span>}
+      </div>
       <div className="flex-1 min-w-0 text-sm">
-        {!status.configured && <p className="text-ink-3">Missing: {status.missing.join(', ')}</p>}
+        {!status.configured && <p className="text-ink-3">{OPTIONAL.has(status.service) ? `Not set up. ${status.missing.join(', ')} would be needed.` : `Missing: ${status.missing.join(', ')}`}</p>}
         {last && (
           <p className={last.ok ? 'text-ink-2' : 'text-red'}>
             {last.detail}
-            <span className="text-ink-3"> · {formatDateTime(last.checkedAt)}{last.requests ? ` · ${last.requests} request${last.requests === 1 ? '' : 's'}` : ''}</span>
+            <span className="text-ink-3"> · {formatDateTime(last.checkedAt)}{last.requests ? ` · ${last.requests} request${last.requests === 1 ? '' : 's'}` : ' · no request'}</span>
           </p>
         )}
         {status.configured && !last && <p className="text-ink-3">Not tested yet.</p>}

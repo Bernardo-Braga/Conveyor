@@ -64,6 +64,15 @@ export function productRoutes(ctx: AppContext) {
     return c.json(job, 202);
   });
 
+  /** Write the listing and create the Shopify draft (2 requests), or rewrite an existing draft (2 requests). */
+  r.post('/products/:id/write-listing', async (c) => {
+    const id = Number(c.req.param('id'));
+    const row = ctx.db.select().from(products).where(eq(products.id, id)).get();
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    const rewrite = !!row.shopifyProductId;
+    return c.json(ctx.worker.enqueue('write_listing', { productId: id, rewrite }, id), 202);
+  });
+
   /** Retry the product's latest failed job from its failed step. 0 repeated requests. */
   r.post('/products/:id/retry', (c) => {
     const id = Number(c.req.param('id'));

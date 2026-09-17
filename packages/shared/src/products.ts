@@ -27,6 +27,18 @@ export const ProductView = z.object({
   shopifyHandle: z.string().nullable(),
   snapshotAt: z.string().nullable(),
   failure: JobError.nullable(),
+  /** Listing station summary, once Claude has written a draft. */
+  listing: z
+    .object({
+      title: z.string().nullable(),
+      needsCheck: z.array(z.string()),
+      priceMinor: z.number().int().nullable(),
+      compareAtMinor: z.number().int().nullable(),
+      marginMinor: z.number().int().nullable(),
+      notes: z.array(z.string()),
+    })
+    .nullable(),
+  adminUrl: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

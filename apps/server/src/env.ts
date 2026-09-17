@@ -26,3 +26,11 @@ export const env = {
 export function dataPath(...parts: string[]): string {
   return path.join(env.dataDir, ...parts);
 }
+
+/**
+ * Each product gets its own folder: listing photos, and the folder a CLI writer runs in.
+ * The data directory is passed in so tests get an isolated one.
+ */
+export function productDir(dataDir: string, productId: number): string {
+  return path.join(dataDir, 'products', String(productId));
+}
