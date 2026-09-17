@@ -174,6 +174,11 @@ function ProductRow({ p, highlighted, onChange }: { p: ProductView; highlighted:
             Open in Shopify
           </a>
         )}
+        {p.shopifyProductId && (p.state === 'editing_in_shopify' || p.state === 'from_shopify' || p.state === 'review' || p.state === 'ready_to_launch') && (
+          <a className="px-3 py-1.5 text-sm rounded-md border border-transparent bg-cobalt text-cobalt-ink hover:brightness-110" href="#Studio">
+            {p.state === 'editing_in_shopify' || p.state === 'from_shopify' ? 'Generate creatives' : 'Open in Studio'}
+          </a>
+        )}
         {(p.state === 'writing_listing' || p.state === 'editing_in_shopify' || (p.state === 'needs_attention' && p.platform)) && (
           <Button kind="quiet" disabled={busy} title="One Claude request plus one Shopify request" onClick={() => act(() => listing.write(p.id))}>
             {p.shopifyProductId ? 'Rewrite listing' : 'Write listing'}

@@ -46,3 +46,16 @@ export const line = {
 export const listing = {
   write: (id: number) => request<JobView>(`/products/${id}/write-listing`, { method: 'POST' }),
 };
+
+// Phase 4: the Studio
+import type { BatchView, CreativeView, GenerateBatchInput, PromptTemplateInput, PromptTemplateView } from '@conveyor/shared';
+export const studio = {
+  generate: (productId: number, body: Partial<GenerateBatchInput> = {}) => request<JobView>(`/products/${productId}/generate`, { method: 'POST', body: JSON.stringify(body) }),
+  batches: (productId: number) => request<BatchView[]>(`/products/${productId}/batches`),
+  act: (creativeId: number, action: 'approve' | 'reject' | 'unapprove') => request<CreativeView>(`/creatives/${creativeId}/${action}`, { method: 'POST' }),
+  regenerate: (creativeId: number, instruction: string | null = null) => request<JobView>(`/creatives/${creativeId}/regenerate`, { method: 'POST', body: JSON.stringify({ instruction }) }),
+  templates: () => request<PromptTemplateView[]>('/prompt-templates'),
+  createTemplate: (body: PromptTemplateInput) => request<PromptTemplateView>('/prompt-templates', { method: 'POST', body: JSON.stringify(body) }),
+  saveTemplate: (id: number, body: PromptTemplateInput) => request<PromptTemplateView>(`/prompt-templates/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  setDefaultTemplate: (id: number) => request<PromptTemplateView>(`/prompt-templates/${id}/default`, { method: 'POST' }),
+};

@@ -6,6 +6,8 @@ import type { LiveState } from '../lib/events.ts';
 import { formatDateTime } from '../lib/format.ts';
 import { QuotaPanel } from '../components/QuotaPanel.tsx';
 import { ImportSettingsPanel } from '../components/ImportSettingsPanel.tsx';
+import { ImageSettingsPanel } from '../components/ImageSettingsPanel.tsx';
+import { PromptTemplatesPanel } from '../components/PromptTemplatesPanel.tsx';
 
 const SECRET_LABELS: Record<SecretName, string> = {
   rapidapi_key: 'RapidAPI key',
@@ -85,6 +87,10 @@ export function SettingsView({ live }: { live: LiveState }) {
       <QuotaPanel refreshKey={finished} />
 
       <ImportSettingsPanel />
+
+      <ImageSettingsPanel />
+
+      <PromptTemplatesPanel />
     </div>
   );
 }

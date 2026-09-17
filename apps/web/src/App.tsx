@@ -18,8 +18,16 @@ export function App() {
   const live = useServerEvents();
 
   useEffect(() => {
-    location.hash = view;
+    if (location.hash.slice(1) !== view) location.hash = view;
   }, [view]);
+  useEffect(() => {
+    const onHash = () => {
+      const v = VIEWS.find((x) => x === location.hash.slice(1));
+      if (v) setView(v);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth({ ok: false }));
   }, []);
@@ -59,7 +67,7 @@ export function App() {
       <main className="flex-1">
         <div className="max-w-6xl mx-auto px-6 py-6">
           {view === 'Line' && <LineView live={live} />}
-          {view === 'Studio' && <StudioView />}
+          {view === 'Studio' && <StudioView live={live} />}
           {view === 'Launch' && <LaunchView />}
           {view === 'Settings' && <SettingsView live={live} />}
         </div>

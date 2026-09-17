@@ -7,7 +7,7 @@ A local macOS control panel that takes a supplier link through to a Shopify draf
 - Node 24 or newer, pnpm 10 (`corepack enable` picks the pinned version), `brew install exiftool`.
 - Codex CLI installed and signed in with ChatGPT (`codex login`).
 - Claude Code installed and signed in with your Claude plan (`claude auth login`). No Claude Console account or `ANTHROPIC_API_KEY` is needed; Conveyor strips keys from the writer's environment so the plan login is always used.
-- Data lives in `~/Library/Application Support/Conveyor/data`. Override with `CONVEYOR_DATA_DIR`.
+- Data lives in `~/Library/Application Support/Conveyor/data`. Override with `CONVEYOR_DATA_DIR`. Each product gets a folder under `products/` (listing photos, references, creatives); Codex image workers run under `workers/`.
 - Keys live in the macOS Keychain (service `Conveyor`). Add them under Settings, Connections.
 
 ## Scripts
@@ -30,6 +30,6 @@ apps/server   Hono API, job worker, SSE, SQLite (Drizzle), ledger client, Keycha
 apps/web      React + Vite + Tailwind + Radix shell with the design tokens and the progress track
 packages/shared   Zod schemas and types used by both apps
 config/versions.ts   Pinned Meta, Shopify, Codex CLI and model versions
-fixtures/     Recorded responses used by tests
+fixtures/     Recorded responses used by tests, plus real Codex engine output under images/
 scripts/      Manual scripts that make live calls
 ```

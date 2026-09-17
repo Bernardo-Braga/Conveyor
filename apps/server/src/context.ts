@@ -15,6 +15,10 @@ import { ShopifyClient } from './shopify/client.ts';
 import { QuotaStore } from './suppliers/quota.ts';
 import { RapidApiClient } from './suppliers/rapidapi.ts';
 import { makeWriters, type RunCli, type WriterSet } from './listing/writers/index.ts';
+import { codexEngine } from './images/codexWorkers.ts';
+import type { EngineSet } from './images/engine.ts';
+import { generateBatchJob } from './jobs/generateBatchJob.ts';
+import type { ImageSettings } from '@conveyor/shared';
 
 export interface AppContext extends Services {
   opened: OpenedDb;
@@ -53,7 +57,16 @@ export function createContext(opts: ContextOptions = {}): AppContext {
   const shopify = new ShopifyClient({ ledger, secrets, settings, tokens: shopifyTokens });
   const quota = new QuotaStore(db);
   const rapidapi = new RapidApiClient({ db, ledger, secrets, quota });
-  const registry = new JobRegistry().register(connectionTestJob(shopifyTokens)).register(pullProductJob({ shopify })).register(listingJob({ shopify, writers }));
+  /** Engines are built per batch from the image settings; tests inject the same fake CLI runner. */
+  const engines = (img: ImageSettings): EngineSet => ({
+    codex: codexEngine({ workers: img.codex.workers, imagesPerTask: img.codex.imagesPerTask, timeLimitPerImageMs: img.codex.timeLimitPerImageSec * 1000, db, ...(opts.runCli ? { run: opts.runCli, pollMs: 20 } : {}) }),
+    // openai: added in phase 5.
+  });
+  const registry = new JobRegistry()
+    .register(connectionTestJob(shopifyTokens))
+    .register(pullProductJob({ shopify }))
+    .register(listingJob({ shopify, writers }))
+    .register(generateBatchJob({ shopify, engines }));
   const worker = new JobWorker(services, registry);
   // The import job chains into the listing job (a pasted link becomes a draft in 3 requests).
   registry.register(importJob({ rapidapi, quota, enqueue: (type, input, productId) => worker.enqueue(type, input, productId) }));

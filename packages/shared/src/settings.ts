@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ListingWriterId } from './listing.ts';
+import { ImageEngineId } from './creatives.ts';
 
 /** Non-secret identifiers each connection needs. Keys themselves live in the Keychain. */
 export const ConnectionSettings = z.object({
@@ -54,6 +55,33 @@ export const ImportSettings = z.object({
 export type ImportSettings = z.infer<typeof ImportSettings>;
 
 /** Every settings section has a name and a schema. Later phases add sections here. */
+/** Image engine settings, PLAN.md section 10. */
+export const ImageSettings = z.object({
+  engine: ImageEngineId.default('codex'),
+  codex: z.object({
+    /** Concurrent Codex processes, each in its own folder. */
+    workers: z.number().int().min(1).max(4).default(3),
+    /** One task per image, or one task that makes all of a format's images. */
+    imagesPerTask: z.enum(['one', 'format']).default('format'),
+    timeLimitPerImageSec: z.number().int().min(60).max(900).default(240),
+    /** After a plan limit or two failures, give the rest to the OpenAI engine. */
+    handoffToOpenAI: z.boolean().default(true),
+  }).prefault({}),
+  openai: z.object({
+    model: z.literal('gpt-image-2').default('gpt-image-2'),
+    quality: z.enum(['low', 'medium', 'high', 'auto']).default('medium'),
+    oneRequestPerFormat: z.boolean().default(true),
+  }).prefault({}),
+  finished: z.object({
+    /** Always JPEG. */
+    quality: z.number().int().min(60).max(100).default(90),
+    stripMetadata: z.literal(true).default(true),
+    /** Run exiftool on every finished file when it is installed. */
+    exiftoolCheck: z.boolean().default(true),
+  }).prefault({}),
+});
+export type ImageSettings = z.infer<typeof ImageSettings>;
+
 /** Internal: the daily CNY rate cache (one request per day). Not user-edited. */
 export const RatesCache = z.object({
   usdPerCny: z.number().positive().nullable().default(null),
@@ -64,6 +92,7 @@ export type RatesCache = z.infer<typeof RatesCache>;
 export const SETTINGS_SECTIONS = {
   connections: ConnectionSettings,
   import: ImportSettings,
+  images: ImageSettings,
   rates: RatesCache,
 } as const;
 export type SettingsSection = keyof typeof SETTINGS_SECTIONS;

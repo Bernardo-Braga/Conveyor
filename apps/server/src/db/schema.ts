@@ -182,40 +182,66 @@ export const creativeBatches = sqliteTable('creative_batches', {
   productId: integer('product_id').notNull().references(() => products.id),
   promptTemplateId: integer('prompt_template_id'),
   promptTemplateVersion: integer('prompt_template_version'),
+  /** The exact prompt sent, after variables were filled. */
   prompt: text('prompt').notNull(),
   engine: text('engine', { enum: ['codex', 'openai'] }).notNull(),
   status: text('status').notNull().default('queued'),
+  handle: text('handle'),
+  formats: text('formats', { mode: 'json' }).notNull().default('[]'),
+  countPerFormat: integer('count_per_format').notNull().default(0),
+  /** Copy of the image settings this batch ran with. */
+  settingsUsed: text('settings_used', { mode: 'json' }),
+  apiRequests: integer('api_requests').notNull().default(0),
   costMinor: integer('cost_minor'),
   taskCount: integer('task_count'),
+  note: text('note'),
+  replacesCreativeId: integer('replaces_creative_id'),
   createdAt: createdAt(),
+  finishedAt: text('finished_at'),
 });
 
-export const creatives = sqliteTable('creatives', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  batchId: integer('batch_id').notNull().references(() => creativeBatches.id),
-  aspect: text('aspect', { enum: ['1:1', '4:5', '9:16'] }).notNull(),
-  originalPath: text('original_path').notNull(),
-  detectedFormat: text('detected_format'),
-  finishedPath: text('finished_path'),
-  width: integer('width'),
-  height: integer('height'),
-  sha256: text('sha256'),
-  metadataCheck: text('metadata_check'),
-  approval: text('approval', { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
-  flags: text('flags', { mode: 'json' }),
-  metaImageHash: text('meta_image_hash'),
-  createdAt: createdAt(),
-});
+/** One planned image. Rows are created up front so a retry generates only what is missing. */
+export const creatives = sqliteTable(
+  'creatives',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    batchId: integer('batch_id').notNull().references(() => creativeBatches.id),
+    productId: integer('product_id').notNull().references(() => products.id),
+    aspect: text('aspect', { enum: ['1:1', '4:5', '9:16'] }).notNull(),
+    /** Product-wide number per aspect; the NN in `{handle}_{4x5}_{NN}.jpg`. */
+    slot: integer('slot').notNull(),
+    status: text('status', { enum: ['pending', 'generating', 'finished', 'failed'] }).notNull().default('pending'),
+    originalPath: text('original_path'),
+    detectedFormat: text('detected_format'),
+    finishedPath: text('finished_path'),
+    fileName: text('file_name'),
+    width: integer('width'),
+    height: integer('height'),
+    bytes: integer('bytes'),
+    sha256: text('sha256'),
+    metadataCheck: text('metadata_check'),
+    approval: text('approval', { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
+    flags: text('flags', { mode: 'json' }),
+    error: text('error'),
+    metaImageHash: text('meta_image_hash'),
+    createdAt: createdAt(),
+    finishedAt: text('finished_at'),
+  },
+  (t) => [index('creatives_batch_idx').on(t.batchId), index('creatives_product_idx').on(t.productId), uniqueIndex('creatives_product_aspect_slot').on(t.productId, t.aspect, t.slot)],
+);
 
 export const codexTasks = sqliteTable('codex_tasks', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   batchId: integer('batch_id').notNull().references(() => creativeBatches.id),
   creativeIds: text('creative_ids', { mode: 'json' }),
+  aspect: text('aspect'),
   worker: integer('worker'),
   folder: text('folder').notNull(),
   attempts: integer('attempts').notNull().default(0),
   startedAt: text('started_at'),
   finishedAt: text('finished_at'),
+  /** Which slots the task produced, and how long it took. */
+  result: text('result', { mode: 'json' }),
   error: text('error'),
 });
 
