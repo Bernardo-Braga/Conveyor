@@ -96,3 +96,45 @@ export const launch = {
   pickInterest: (label: string, interest: InterestRef) => request<{ ok: true }>('/interests/pick', { method: 'POST', body: JSON.stringify({ label, interest }) }),
   refreshInsights: () => request<JobView>('/insights/refresh', { method: 'POST' }),
 };
+
+// Phase 8: Requests page and maintenance
+export interface LedgerOverview {
+  days: number;
+  byDay: { day: string; service: string; count: number; failed: number; avgMs: number }[];
+  byService: { service: string; total: number; failed: number; today: number }[];
+  lastQuota: { service: string; quotaRemaining: number | null; at: string } | null;
+}
+export interface ProductTotals {
+  id: number;
+  title: string | null;
+  state: string;
+  handle: string | null;
+  requests: Record<string, number>;
+  totalRequests: number;
+  runs: Record<string, number>;
+  costMinor: number;
+}
+export interface BackupInfo {
+  file: string;
+  name: string;
+  bytes: number;
+  createdAt: string;
+}
+export interface AgentStatus {
+  installed: boolean;
+  loaded: boolean;
+  plist: string;
+  pid: number | null;
+  webBuilt: boolean;
+}
+export const ops = {
+  overview: (days = 14) => request<LedgerOverview>(`/ledger/overview?days=${days}`),
+  products: () => request<ProductTotals[]>('/ledger/products'),
+  recent: (limit = 100, service?: string) => request<LedgerEntry[]>(`/ledger/recent?limit=${limit}${service ? `&service=${service}` : ''}`),
+  backups: () => request<{ dir: string; backups: BackupInfo[] }>('/ops/backups'),
+  backupNow: () => request<BackupInfo & { pruned: string[] }>('/ops/backups', { method: 'POST' }),
+  agent: () => request<AgentStatus>('/ops/launch-agent'),
+  installAgent: () => request<AgentStatus>('/ops/launch-agent', { method: 'POST' }),
+  uninstallAgent: () => request<AgentStatus>('/ops/launch-agent', { method: 'DELETE' }),
+  info: () => request<{ dataDir: string; port: number; env: string; node: string }>('/ops/info'),
+};

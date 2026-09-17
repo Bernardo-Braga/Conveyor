@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @conveyor/server --filter @conveyor/web dev",
+    "start": "pnpm --filter @conveyor/web build && CONVEYOR_ENV=production pnpm --filter @conveyor/server start",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,7 +20,8 @@
     "codex:smoke": "tsx scripts/codex-smoke.ts",
     "capture:fixtures": "tsx scripts/capture-rapidapi-fixtures.ts",
     "writer:smoke": "tsx scripts/listing-writer-smoke.ts",
-    "meta:test-launch": "tsx scripts/meta-test-launch.ts"
+    "meta:test-launch": "tsx scripts/meta-test-launch.ts",
+    "start-at-login": "tsx scripts/start-at-login.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

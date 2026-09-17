@@ -5,11 +5,14 @@ import { api } from './lib/api.ts';
 import { useServerEvents } from './lib/events.ts';
 import { LaunchView } from './views/Launch.tsx';
 import { TemplatesView } from './views/Templates.tsx';
+import { RequestsView } from './views/Requests.tsx';
+import { ShortcutsDialog, useGlobalShortcuts } from './components/Shortcuts.tsx';
+import { useMemo } from 'react';
 import { LineView } from './views/Line.tsx';
 import { SettingsView } from './views/Settings.tsx';
 import { StudioView } from './views/Studio.tsx';
 
-const VIEWS = ['Line', 'Studio', 'Launch', 'Templates', 'Settings'] as const;
+const VIEWS = ['Line', 'Studio', 'Launch', 'Templates', 'Requests', 'Settings'] as const;
 type View = (typeof VIEWS)[number];
 
 export function App() {
@@ -34,6 +37,18 @@ export function App() {
   }, []);
 
   const running = [...live.jobs.values()].filter((j) => j.status === 'running' || j.status === 'queued').length;
+  const handlers = useMemo(
+    () => ({
+      goTo: (i: number) => VIEWS[i] && setView(VIEWS[i]!),
+      toggleActivity: () => setDrawer((d) => !d),
+      focusLine: () => {
+        setView('Line');
+        setTimeout(() => (document.querySelector<HTMLInputElement>('input[placeholder^="Paste an AliExpress"]')?.focus()), 50);
+      },
+    }),
+    [],
+  );
+  const shortcuts = useGlobalShortcuts(handlers);
 
   return (
     <div className="min-h-full flex flex-col">
@@ -62,6 +77,9 @@ export function App() {
             <Button kind="quiet" onClick={() => setDrawer(true)}>
               Activity{running ? ` (${running})` : ''}
             </Button>
+            <Button kind="quiet" title="Keyboard shortcuts (?)" onClick={() => shortcuts.setOpen(true)}>
+              ?
+            </Button>
           </div>
         </div>
       </header>
@@ -71,10 +89,12 @@ export function App() {
           {view === 'Studio' && <StudioView live={live} />}
           {view === 'Launch' && <LaunchView live={live} />}
           {view === 'Templates' && <TemplatesView />}
+          {view === 'Requests' && <RequestsView live={live} />}
           {view === 'Settings' && <SettingsView live={live} />}
         </div>
       </main>
       <ActivityDrawer open={drawer} onOpenChange={setDrawer} live={live} />
+      <ShortcutsDialog open={shortcuts.open} onOpenChange={shortcuts.setOpen} />
     </div>
   );
 }

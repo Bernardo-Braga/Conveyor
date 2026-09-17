@@ -11,6 +11,7 @@ import { connectionStatuses } from './connections/index.ts';
 import { productRoutes } from './products/routes.ts';
 import { imageRoutes } from './images/routes.ts';
 import { metaRoutes } from './meta/routes.ts';
+import { opsRoutes } from './ops/routes.ts';
 import type { AppContext } from './context.ts';
 import { requests } from './db/schema.ts';
 import { env } from './env.ts';
@@ -86,6 +87,7 @@ export function createApp(ctx: AppContext, opts: { serveWeb?: boolean } = {}) {
   api.route('/', productRoutes(ctx));
   api.route('/', imageRoutes(ctx));
   api.route('/', metaRoutes(ctx));
+  api.route('/', opsRoutes(ctx));
   app.route('/api', api);
   app.notFound((c) => (c.req.path.startsWith('/api/') ? c.json({ error: 'Not found' }, 404) : c.text('Not found', 404)));
 
