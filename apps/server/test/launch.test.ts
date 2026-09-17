@@ -154,9 +154,13 @@ describe('launching', () => {
       if (op.relative_url.endsWith('adsets')) {
         expect(body.get('daily_budget')).toBeNull();
         expect(body.get('campaign_id')).toBe('{result=campaign:$.id}');
-        const tg = JSON.parse(body.get('targeting')!) as { targeting_automation: { advantage_audience: number }; age_max?: number };
-        expect(tg.targeting_automation.advantage_audience).toBe(1);
-        expect(tg.age_max).toBeUndefined();
+        const tg = JSON.parse(body.get('targeting')!) as { targeting_automation: { advantage_audience: number }; age_max?: number; flexible_spec?: unknown[] };
+        // Broad ad sets keep Advantage+ audience on; the Formal wear one runs with it off, since the two cannot be combined.
+        if (tg.flexible_spec) expect(tg.targeting_automation.advantage_audience).toBe(0);
+        else {
+          expect(tg.targeting_automation.advantage_audience).toBe(1);
+          expect(tg.age_max).toBeUndefined();
+        }
       }
       if (op.relative_url.endsWith('adcreatives')) {
         const spec = JSON.parse(body.get('object_story_spec')!) as { page_id: string; link_data: { image_hash: string; call_to_action: { type: string } } };

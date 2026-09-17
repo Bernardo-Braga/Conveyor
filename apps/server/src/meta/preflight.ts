@@ -19,7 +19,16 @@ export function preflight(i: PreflightInput): PreflightCheck[] {
   if (!i.tokenSet) add('token_missing', 'block', 'No Meta access token. Add one under Connections.');
   if (!i.adAccountId) add('account_missing', 'block', 'No Meta ad account ID under Accounts.');
   if (!i.pageId) add('page_missing', 'block', 'No Page ID under Accounts. Creatives need a Page.');
-  if (!i.pixelId && !i.template.adset.promoted_object.pixel_id) add('pixel_missing', 'warn', 'No pixel ID. Conversion optimisation needs one.', true);
+  const goal = i.template.adset.optimization_goal;
+  const conversionGoal = ['OFFSITE_CONVERSIONS', 'VALUE', 'LEAD_GENERATION'].includes(goal) && ['OUTCOME_SALES', 'OUTCOME_LEADS'].includes(i.template.campaign.objective);
+  if (!i.pixelId && !i.template.adset.promoted_object.pixel_id) add('pixel_missing', conversionGoal ? 'block' : 'warn', conversionGoal ? `Optimising for ${goal} needs a pixel in promoted_object; add the pixel ID under Accounts.` : 'No pixel ID. Conversion optimisation needs one.', !conversionGoal);
+  const b = i.template.campaign.budget;
+  if (((b.mode === 'CBO' && b.lifetime_budget_minor != null) || (b.mode === 'ABO' && i.template.adset.budget.lifetime_budget_minor != null)) && !i.template.adset.schedule.end_time) add('lifetime_end_time', 'block', 'A lifetime budget needs an end time in the template schedule.');
+  const billing = i.template.adset.billing_event;
+  const billingOk = billing === 'IMPRESSIONS' || (billing === 'LINK_CLICKS' && goal === 'LINK_CLICKS') || (billing === 'THRUPLAY' && goal === 'THRUPLAY') || (billing === 'APP_INSTALLS' && goal === 'APP_INSTALLS') || (billing === 'PURCHASE' && goal === 'OFFSITE_CONVERSIONS');
+  if (!billingOk) add('billing_event', 'warn', `billing_event ${billing} with optimization_goal ${goal} is usually rejected by Meta; IMPRESSIONS works with every goal.`, true);
+  const special = i.template.campaign.special_ad_categories.filter((c) => c && c !== 'NONE');
+  if (special.length) add('special_ad_categories', 'info', `Special ad categories ${special.join(', ')} restrict age, gender and location targeting; Meta will widen them.`);
 
   const placeholders = i.structure.adSets.filter((s) => s.interestKind === 'placeholder');
   if (placeholders.length) add('interest_placeholder', 'warn', `${placeholders.length} ad set(s) still have a placeholder interest name (${placeholders.map((s) => s.name).join(', ')}). They would launch broad. Rename them or pick an interest.`, true);

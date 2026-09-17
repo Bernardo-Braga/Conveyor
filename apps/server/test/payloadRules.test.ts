@@ -66,6 +66,9 @@ describe('Ashworth (CBO)', () => {
     expect(tg).not.toHaveProperty('facebook_positions');
     expect(tg).not.toHaveProperty('publisher_platforms');
     expect(tg).not.toHaveProperty('flexible_spec'); // the empty group was removed
+    expect(tg).not.toHaveProperty('exclusions'); // { interests: [], behaviors: [] } in the file is noise
+    expect(tg).not.toHaveProperty('excluded_geo_locations');
+    expect(tg.geo_locations).toEqual({ countries: ['US'] }); // empty regions/cities/zips lists dropped
     expect(tg).not.toHaveProperty('advantage_audience');
     expect(tg).not.toHaveProperty('placements');
     expect(body.promoted_object).toEqual({ pixel_id: '1000000000000001', custom_event_type: 'PURCHASE' });
@@ -76,8 +79,9 @@ describe('Ashworth (CBO)', () => {
     const t = ashworth();
     const v = t.adset_variants[2]!;
     const ops = opsFor(t, [set(2, v.name, { interestKind: 'file', interests: v.interests })]);
-    const tg = ops[1]!.body!.targeting as { flexible_spec: unknown[] };
+    const tg = ops[1]!.body!.targeting as { flexible_spec: unknown[]; targeting_automation: { advantage_audience: number } };
     expect(tg.flexible_spec).toEqual([{ interests: [{ id: '6003290737525', name: 'Formal wear' }] }]);
+    expect(tg.targeting_automation.advantage_audience).toBe(0); // an include audience and Advantage+ audience cannot be combined
   });
 });
 
@@ -200,7 +204,9 @@ describe('creatives and ads', () => {
     expect(c.object_story_spec).toMatchObject({ page_id: '100000000000001', instagram_user_id: '17841400000000', link_data: { image_hash: 'abc123', link: ad.destinationUrl, message: 'Body', name: 'Head', call_to_action: { type: 'SHOP_NOW' } } });
     expect((c.object_story_spec as { link_data: Record<string, unknown> }).link_data).not.toHaveProperty('description');
     expect(c.url_tags).toBe('utm_source=meta&utm_campaign=Test');
-    expect(c.degrees_of_freedom_spec).toEqual({ creative_features_spec: { standard_enhancements: { enroll_status: 'OPT_OUT' } } });
+    const features = (c.degrees_of_freedom_spec as { creative_features_spec: Record<string, { enroll_status: string }> }).creative_features_spec;
+    expect(features).not.toHaveProperty('standard_enhancements');
+    expect(Object.values(features).every((f) => f.enroll_status === 'OPT_OUT')).toBe(true);
     expect(adFields('linen_4x5_01.jpg', '{result=set0:$.id}', '{result=cr1:$.id}')).toEqual({ name: 'linen_4x5_01.jpg', adset_id: '{result=set0:$.id}', creative: { creative_id: '{result=cr1:$.id}' }, status: 'PAUSED' });
   });
 });

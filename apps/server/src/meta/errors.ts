@@ -22,6 +22,10 @@ const EXPLANATIONS: Record<string, string> = {
   '200': 'The token lacks a permission. The system user needs ads_management, ads_read and business_management on this ad account.',
   '10': 'The app or system user is not allowed to make this call. Check the ad account assignment.',
   '17': 'Meta rate limit reached. Wait a few minutes and retry.',
+  '613': 'Meta rate limit reached for this ad account. Wait a few minutes and retry.',
+  '100/3858504': 'The creative bundle field standard_enhancements is deprecated; Conveyor sets each enhancement feature individually. If you see this, the payload rules were bypassed.',
+  '100/1885183': 'The Meta app that owns this token is in Development mode, so ads cannot be created (campaign, ad sets and uploads still succeed). Switch the app to Live in the Meta developer dashboard.',
+  '1': 'Meta returned "unknown error" (code 1). This is usually a malformed targeting spec: an empty list, a bare interest id, or an audience combined with Advantage+ audience. Use "Check targeting with Meta" on the Launch view to find the field.',
   '80004': 'Ads API throttled for this ad account. Wait and retry; Conveyor batches writes to stay under the limit.',
 };
 
@@ -36,5 +40,7 @@ export function describeMetaError(e: MetaErrorBody | undefined, status: number, 
   const parts = [`code ${e.code ?? '?'}`];
   if (e.error_subcode != null) parts.push(`subcode ${e.error_subcode}`);
   const rid = e.fbtrace_id ?? requestId;
-  return `Meta error ${parts.join(' / ')}: ${e.error_user_msg ?? e.message ?? 'no message'}${rid ? ` (request ${rid})` : ''}.`;
+  // `message` alone is often just "Invalid parameter"; the actionable text is error_user_msg (the other tool's bug 3).
+  const text = [e.message, e.error_user_title && e.error_user_title !== e.message ? e.error_user_title : null, e.error_user_msg && e.error_user_msg !== e.message ? e.error_user_msg : null].filter(Boolean).join(' — ') || 'no message';
+  return `Meta error ${parts.join(' / ')}: ${text}${rid ? ` (request ${rid})` : ''}.`;
 }

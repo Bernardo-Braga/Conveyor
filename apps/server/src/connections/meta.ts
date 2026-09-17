@@ -2,6 +2,9 @@ import { VERSIONS } from '../../../../config/versions.ts';
 import { describeMetaError, explainMetaError, type MetaErrorBody } from '../meta/errors.ts';
 import { result, type ConnectionTester } from './types.ts';
 
+/** Ad account status codes, from the other tool's handoff notes. */
+const ACCOUNT_STATUS: Record<number, string> = { 1: 'active', 2: 'disabled', 3: 'unsettled', 7: 'pending risk review', 8: 'pending settlement', 9: 'in grace period', 100: 'pending closure', 101: 'closed', 201: 'any active', 202: 'any closed' };
+
 /**
  * One read-only Graph call. With an ad account configured it reads that account,
  * which also proves the system user is assigned to it; otherwise it reads `me`.
@@ -24,7 +27,7 @@ export const testMeta: ConnectionTester = async ({ ledger, secrets, settings, jo
     return result('meta', false, explain ? `${why} ${explain}` : why, 1, body.error?.fbtrace_id ?? requestId);
   }
   if (adAccountId) {
-    const status = body.account_status === 1 ? 'active' : `status ${body.account_status ?? '?'}`;
+    const status = ACCOUNT_STATUS[body.account_status ?? -1] ?? `status ${body.account_status ?? '?'}`;
     return result('meta', true, `Ad account ${body.name ?? adAccountId} reachable (${status}, ${body.currency ?? '?'}).`, 1, requestId);
   }
   return result('meta', true, `Token accepted for ${body.name ?? body.id ?? 'the system user'}. Add the ad account ID to check access to it.`, 1, requestId);

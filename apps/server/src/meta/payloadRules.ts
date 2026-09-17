@@ -50,6 +50,7 @@ export function budgetFields(b: Budget): Record<string, unknown> {
  */
 export function campaignFields(t: Template, name: string): Record<string, unknown> {
   const b = t.campaign.budget;
+  if (b.mode === 'CBO' && b.lifetime_budget_minor != null && !t.adset.schedule.end_time) throw new PayloadRuleError('A lifetime campaign budget needs an end time (schedule.end_time)');
   const base: Record<string, unknown> = {
     name,
     objective: t.campaign.objective,
@@ -58,6 +59,7 @@ export function campaignFields(t: Template, name: string): Record<string, unknow
     status: 'PAUSED',
   };
   if (b.spend_cap_minor != null) base.spend_cap = b.spend_cap_minor;
+  if (b.mode === 'CBO' && b.lifetime_budget_minor != null && t.adset.schedule.end_time) base.stop_time = Math.floor(new Date(t.adset.schedule.end_time).getTime() / 1000);
   if (b.mode === 'CBO') return { ...base, ...budgetFields(b) };
   return { ...base, is_adset_budget_sharing_enabled: false };
 }
@@ -123,21 +125,31 @@ export function targetingFields(input: TargetingInput, notes: PayloadNote[], ind
   const t = input.base;
   const { placements: _p, advantage_audience, flexible_spec, geo_locations, age_min, age_max, genders, ...rest } = t;
   const out: Record<string, unknown> = { ...rest };
-  const geo = { ...geo_locations };
+  // Empty lists are noise to the API: drop them, and drop the objects they leave empty.
+  const geo = pruneEmpty({ ...geo_locations });
   if (input.countryOverride) {
     geo.countries = [input.countryOverride];
     notes.push({ scope: 'adset', index, message: `Country ${input.countryOverride} from the variant overrides the template's countries.` });
   }
   out.geo_locations = geo;
-  if (!Object.keys(t.excluded_geo_locations ?? {}).length) delete out.excluded_geo_locations;
-  if (!Object.keys(t.exclusions ?? {}).length) delete out.exclusions;
+  const excludedGeo = pruneEmpty({ ...(t.excluded_geo_locations ?? {}) });
+  if (Object.keys(excludedGeo).length) out.excluded_geo_locations = excludedGeo;
+  else delete out.excluded_geo_locations;
+  const exclusions = pruneEmpty({ ...(t.exclusions ?? {}) });
+  if (Object.keys(exclusions).length) out.exclusions = exclusions;
+  else delete out.exclusions;
   for (const k of ['locales', 'custom_audiences', 'excluded_custom_audiences'] as const) if (!(t[k] ?? []).length) delete out[k];
 
   const specs = (flexible_spec ?? []).map((g) => Object.fromEntries(Object.entries(g).filter(([, v]) => !(Array.isArray(v) && v.length === 0)))).filter((g) => Object.keys(g).length);
   if (input.interests.length) specs.push({ interests: input.interests.map((i) => ({ id: i.id, name: i.name })) });
   if (specs.length) out.flexible_spec = specs;
 
-  const adv = advantage_audience ? 1 : 0;
+  // Advantage+ audience and an explicit include audience conflict (the other tool's bugs 2 and 7):
+  // with it on, Meta drops the audience and every ad set comes out identically broad. An ad set
+  // that names an interest or carries custom audiences therefore runs with it off.
+  const hasAudience = input.interests.length > 0 || (Array.isArray(t.custom_audiences) && t.custom_audiences.length > 0);
+  const adv = advantage_audience && !hasAudience ? 1 : 0;
+  if (advantage_audience && hasAudience) notes.push({ scope: 'adset', index, message: `Advantage+ audience is off for this ad set because it targets ${input.interests.map((i) => i.name).join(', ') || 'a custom audience'}; the two cannot be combined.` });
   out.targeting_automation = { advantage_audience: adv };
   const min = input.ageBand?.[0] ?? age_min ?? 18;
   const max = input.ageBand?.[1] ?? age_max ?? 65;
@@ -156,6 +168,15 @@ export function targetingFields(input: TargetingInput, notes: PayloadNote[], ind
   return out;
 }
 
+/** Removes keys whose value is an empty array, empty object, null or undefined. */
+export function pruneEmpty<T extends Record<string, unknown>>(o: T): T {
+  for (const k of Object.keys(o)) {
+    const v = o[k];
+    if (v == null || (Array.isArray(v) && v.length === 0) || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v as object).length === 0)) delete o[k];
+  }
+  return o;
+}
+
 export interface AdSetContext {
   template: Template;
   set: LaunchAdSet;
@@ -169,6 +190,7 @@ export interface AdSetContext {
 export function adSetFields(c: AdSetContext): Record<string, unknown> {
   const t = c.template;
   const d = t.adset;
+  if (t.campaign.budget.mode === 'ABO' && d.budget.lifetime_budget_minor != null && !d.schedule.end_time) throw new PayloadRuleError(`Ad set ${c.set.name}: a lifetime budget needs an end time`);
   const promoted: Record<string, unknown> = { ...d.promoted_object };
   if (c.pixelId) promoted.pixel_id = c.pixelId;
   const out: Record<string, unknown> = {
@@ -194,9 +216,31 @@ export function creativeFields(ad: LaunchAd, pageId: string, instagramUserId: st
   const spec: Record<string, unknown> = { page_id: pageId, link_data: linkData };
   if (instagramUserId) spec.instagram_user_id = instagramUserId;
   const out: Record<string, unknown> = { name: ad.fileName, object_story_spec: spec, url_tags: urlParams };
-  // Keeps Meta's creative enhancements off (advantage_creative_enhancements: false in the template).
-  if (!enhancements) out.degrees_of_freedom_spec = { creative_features_spec: { standard_enhancements: { enroll_status: 'OPT_OUT' } } };
+  out.degrees_of_freedom_spec = { creative_features_spec: enhancementSpec(enhancements) };
   return out;
+}
+
+/**
+ * Meta's creative enhancements, feature by feature. The `standard_enhancements` bundle was
+ * removed in v22 and is rejected with code 100/3858504 (the other tool's bug 5), so each
+ * feature carries its own enroll status. Off keeps the approved image exactly as uploaded.
+ * The generative features (uncrop, animation, background generation) are never opted in.
+ */
+export const IMAGE_ENHANCEMENT_FEATURES = ['image_touchups', 'image_brightness_and_contrast', 'image_templates', 'enhance_cta', 'text_optimizations', 'inline_comment'] as const;
+export const GENERATIVE_FEATURES = ['image_uncrop', 'image_animation', 'image_background_gen'] as const;
+export function enhancementSpec(on: boolean): Record<string, { enroll_status: 'OPT_IN' | 'OPT_OUT' }> {
+  const spec: Record<string, { enroll_status: 'OPT_IN' | 'OPT_OUT' }> = {};
+  for (const f of IMAGE_ENHANCEMENT_FEATURES) spec[f] = { enroll_status: on ? 'OPT_IN' : 'OPT_OUT' };
+  for (const f of GENERATIVE_FEATURES) spec[f] = { enroll_status: 'OPT_OUT' };
+  return spec;
+}
+
+/**
+ * URL parameters with tokens filled and URL-encoded (the other tool's bug 6: a campaign name
+ * with spaces, a slash or a pipe broke the query string). Destination URLs are never encoded here.
+ */
+export function fillUrlParams(pattern: string, vars: Record<string, string | undefined>): string {
+  return pattern.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (_, k: string) => encodeURIComponent(vars[k] ?? ''));
 }
 
 export function adFields(name: string, adSetRef: string, creativeRef: string): Record<string, unknown> {
@@ -215,6 +259,12 @@ export function assertPayloadRules(ops: BatchOp[], mode: BudgetMode): void {
     const kind = /\/campaigns$/.test(url) ? 'campaign' : /\/adsets$/.test(url) ? 'adset' : /\/adcreatives$/.test(url) ? 'creative' : /\/ads$/.test(url) ? 'ad' : /\/adimages$/.test(url) ? 'image' : 'other';
     if (kind === 'other' || kind === 'image') continue;
     if (kind !== 'creative' && b.status !== 'PAUSED') throw new PayloadRuleError(`${kind} ${op.name ?? ''} is not PAUSED`, op.name);
+    if (kind === 'creative') {
+      const dof = b.degrees_of_freedom_spec as { creative_features_spec?: Record<string, unknown> } | undefined;
+      if (dof?.creative_features_spec && 'standard_enhancements' in dof.creative_features_spec) throw new PayloadRuleError('standard_enhancements is deprecated (code 100/3858504); set features individually', op.name);
+      continue;
+    }
+    if ('lifetime_budget' in b && !('end_time' in b) && !('stop_time' in b)) throw new PayloadRuleError(`${kind} ${op.name ?? ''} has a lifetime budget without an end time`, op.name);
     if (b.is_adset_budget_sharing_enabled === true) throw new PayloadRuleError('Ad set budget sharing must never be true', op.name);
     if (kind === 'campaign') {
       if (mode === 'ABO') {

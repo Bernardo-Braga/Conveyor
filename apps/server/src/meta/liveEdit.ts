@@ -1,10 +1,10 @@
 import { LiveCampaign, type BudgetMode, type InterestRef, type LaunchAd, type LaunchAdSet, type LiveChange, type LiveDiff, type Template } from '@conveyor/shared';
 import type { BatchOp } from './batch.ts';
 import type { MetaClient } from './client.ts';
-import { adFields, adSetFields, assertPayloadRules, creativeFields, type PayloadNote } from './payloadRules.ts';
+import { adFields, adSetFields, assertPayloadRules, creativeFields, fillUrlParams, type PayloadNote } from './payloadRules.ts';
 import { fillPattern, todayTag } from './templates.ts';
 
-const READ_FIELDS = 'id,name,status,effective_status,daily_budget,lifetime_budget,adsets.limit(100){id,name,status,daily_budget,lifetime_budget,targeting{flexible_spec},ads.limit(100){id,name,status,creative{id}}}';
+const READ_FIELDS = 'id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,adsets.limit(100){id,name,status,effective_status,daily_budget,lifetime_budget,targeting{flexible_spec},ads.limit(100){id,name,status,effective_status,creative{id}}}';
 
 interface RawRead {
   id: string;
@@ -115,7 +115,7 @@ export function planEditOps(p: EditPlanInput): { ops: BatchOp[]; notes: PayloadN
   const act = p.adAccountId;
   const t = p.template;
   const campaignName = p.live.name;
-  const urlParams = fillPattern(p.urlParams, { campaign: campaignName, template: t.name, date: todayTag(p.now) });
+  const urlParams = fillUrlParams(p.urlParams, { campaign: campaignName, template: t.name, date: todayTag(p.now) });
   const creativeNames = new Map<string, string>();
   const creativeFor = (ad: LaunchAd): string => {
     const hash = p.imageHashes.get(ad.creativeId);

@@ -10,7 +10,8 @@ A local macOS control panel that takes a supplier link through to a Shopify draf
 - Claude Code installed and signed in with your Claude plan (`claude auth login`). No Claude Console account or `ANTHROPIC_API_KEY` is needed; Conveyor strips keys from the writer's environment so the plan login is always used.
 - Backups: Settings, Maintenance, "Back up now" writes one zip under the data directory's `backups/` (database, templates, product folders; never keys). The ten newest are kept.
 - Data lives in `~/Library/Application Support/Conveyor/data`. Override with `CONVEYOR_DATA_DIR`. Each product gets a folder under `products/` (listing photos, references, creatives); Codex image workers run under `workers/`; Meta templates are JSON files under `templates/`, edited from the Templates tab.
-- Keys live in the macOS Keychain (service `Conveyor`). Add them under Settings, Connections.
+- Keys live in the macOS Keychain (service `Conveyor`). Add them under Settings, Connections. The Meta system user token needs `ads_management`, `ads_read`, `business_management` and `pages_read_engagement`; the Meta app secret is optional and only needed when the app requires `appsecret_proof`.
+- `META-API-HANDOFF.md` records what the previous launcher learned about the Marketing API; the payload rules and their tests encode it.
 
 ## Scripts
 
@@ -25,7 +26,7 @@ A local macOS control panel that takes a supplier link through to a Shopify draf
 | `pnpm lint` | ESLint, including the "one HTTP path" and "no keytar, no shell" rules. |
 | `pnpm db:generate` | Generate a Drizzle migration after changing `apps/server/src/db/schema.ts`. |
 | `pnpm codex:smoke` | Manual. Runs the Codex image test three times (`--runs N --timeout S`). Uses the ChatGPT plan. |
-| `pnpm meta:test-launch [--template ashworth\|whitcombe\|both] [--keep]` | Manual. Creates a paused campaign per template in the test ad account from Settings, reads it back, and deletes it. Needs the Meta token in the Keychain. |
+| `pnpm meta:test-launch [--template ashworth\|whitcombe\|both] [--keep] [--dry-run]` | Manual. Creates a paused campaign per template in the test ad account from Settings, reads it back, and deletes it. `--dry-run` plans and checks everything with 0 requests. |
 | `pnpm writer:smoke` | Manual. Writes a listing with both local writers from the captured fixture (`--writer claude_code\|codex\|both`). Uses your Claude and ChatGPT plans, 0 API requests. |
 | `pnpm capture:fixtures <aliexpress link> <1688 link>` | Manual. Exactly 2 RapidAPI requests. Saves the raw bodies in the app database and writes `fixtures/rapidapi/*.json` for the mapper tests. Needs the RapidAPI key in the Keychain. |
 

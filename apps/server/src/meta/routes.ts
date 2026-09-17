@@ -12,6 +12,7 @@ import { findInterests, pickInterest, resolveVariantInterests } from './interest
 import { approvedCreatives, buildStructure, launchCounts } from './launch.ts';
 import { launchBlockers, preflight } from './preflight.ts';
 import { editRequestCount, learningWarnings } from './liveEdit.ts';
+import { validateTargeting } from './validateTargeting.ts';
 import { campaignView, listCampaigns, readState } from './repo.ts';
 import { duplicateTemplate, seedTemplates, syncTemplates, templatesDir, trashTemplate, writeTemplateFile } from './templateFiles.ts';
 import { exportForOtherTool, getTemplate, listTemplates, parseTemplate } from './templates.ts';
@@ -204,6 +205,19 @@ export function metaRoutes(ctx: AppContext) {
     const counts = launchCounts(structure, uniqueCreatives, newImages);
     const preview: LaunchPreview = { productId, templateId: t ? body.templateId : 0, mode: t.campaign.budget.mode, structure, operations: counts.operations, imageUploads: newImages, requests: counts.requests, checks, canLaunch: launchBlockers(checks, body.acknowledge).length === 0, notes: built.notes };
     return c.json(preview);
+  });
+
+  /** "Check targeting with Meta": one batch of delivery_estimate reads, nothing created. */
+  r.post('/products/:id/launch-validate', async (c) => {
+    const productId = Number(c.req.param('id'));
+    const body = LaunchInput.parse({ ...((await c.req.json().catch(() => ({}))) as object), productId });
+    const t = getTemplate(ctx.db, body.templateId);
+    if (!t) return c.json({ error: 'Template not found' }, 404);
+    const conn = ctx.settings.get('connections').meta;
+    const setup = ctx.settings.get('adsetup');
+    const structure = body.structure ?? buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames }).structure;
+    const out = await validateTargeting(ctx.meta, { template: t, structure, adAccountId: conn.adAccountId, pixelId: conn.pixelId || null, now: new Date(), keepTimeOfDay: setup.keepTimeOfDay, productId });
+    return c.json(out);
   });
 
   // Live editing (PLAN.md section 9.7): one read, a change list, one batch.

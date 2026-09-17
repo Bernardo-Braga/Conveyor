@@ -129,4 +129,5 @@ export const LABELS: Record<SecretName, string> = {
   shopify_client_id: 'Shopify client ID',
   shopify_client_secret: 'Shopify client secret',
   meta_access_token: 'Meta access token',
+  meta_app_secret: 'Meta app secret (optional)',
 };

@@ -1,7 +1,8 @@
 /**
  * Meta test launch (PLAN.md section 9, phase 6 "Done when").
  *
- * Manual, run by the user: `pnpm meta:test-launch [--template ashworth|whitcombe|both] [--keep]`.
+ * Manual, run by the user: `pnpm meta:test-launch [--template ashworth|whitcombe|both] [--keep] [--dry-run]`.
+ * `--dry-run` plans everything, asserts the payload rules and prints the counts with 0 requests.
  * For each template it creates a PAUSED campaign in the *test* ad account from Settings, with
  * finished JPEGs made from the engine fixture, checks every object exists and is PAUSED, and
  * deletes everything afterwards unless --keep is given. Nothing is ever set ACTIVE.
@@ -17,6 +18,7 @@ import { finishCreative } from '../apps/server/src/images/finish.ts';
 import { finishedFileName } from '../apps/server/src/images/store.ts';
 import { launchCounts, planOperations, runObjectBatches } from '../apps/server/src/meta/launch.ts';
 import { opError } from '../apps/server/src/meta/client.ts';
+import { assertPayloadRules } from '../apps/server/src/meta/payloadRules.ts';
 import { resolveVariantInterests } from '../apps/server/src/meta/interests.ts';
 import { fillPattern, parseAgeBand, todayTag } from '../apps/server/src/meta/templates.ts';
 
@@ -26,6 +28,7 @@ const which = (() => {
   return i >= 0 ? (process.argv[i + 1] ?? 'both') : 'both';
 })();
 const KEEP = process.argv.includes('--keep');
+const DRY = process.argv.includes('--dry-run');
 const FILES = { ashworth: 'ashworth-cbo.json', whitcombe: 'whitcombe-abo.json' } as const;
 
 async function main() {
@@ -36,7 +39,8 @@ async function main() {
     const act = conn.testAdAccountId || conn.adAccountId;
     if (!act) throw new Error('No test ad account ID under Settings, Accounts.');
     if (!conn.pageId) throw new Error('No Page ID under Settings, Accounts.');
-    if (!(await ctx.secrets.get('meta_access_token'))) throw new Error('No Meta access token in the Keychain. Add it under Connections.');
+    if (!DRY && !(await ctx.secrets.get('meta_access_token'))) throw new Error('No Meta access token in the Keychain. Add it under Connections.');
+    if (DRY) console.log('Dry run: nothing is sent to Meta.\n');
     if (act === conn.adAccountId) console.log('Note: the test ad account is the same as the live one. Objects are created PAUSED and deleted at the end.\n');
 
     // Finished JPEGs from the real engine fixture, one per aspect, so uploads are genuine clean files.
@@ -58,16 +62,21 @@ async function main() {
       const created: Record<string, string> = {};
       try {
         // 1. Upload the three images in one batch with attached files (the "adimages in a batch" Confirm).
-        const uploadOps = images.map((img, k) => ({ method: 'POST' as const, relative_url: `${act}/adimages`, name: `img${k}`, attached_files: `img${k}`, body: { name: img.fileName } }));
-        const files = Object.fromEntries(images.map((img, k) => [`img${k}`, { data: img.data, filename: img.fileName, type: 'image/jpeg' }]));
-        const up = await ctx.meta.batch(uploadOps, { purpose: 'test_adimages' }, files);
         const hashes = new Map<number, string>();
-        up.results.forEach((r, k) => {
-          const err = opError(r);
-          if (err) throw new Error(`adimages op ${k} failed: ${err.message} (code ${err.code})`);
-          hashes.set(images[k]!.id, Object.values((r.body as { images: Record<string, { hash: string }> }).images)[0]!.hash);
-        });
-        console.log(`upload batch: ${images.length} images, hashes ${[...hashes.values()].map((h) => h.slice(0, 8)).join(', ')}`);
+        if (DRY) {
+          images.forEach((img) => hashes.set(img.id, `dryrun${img.id}`));
+          console.log(`upload batch (planned): ${images.length} images in 1 request`);
+        } else {
+          const uploadOps = images.map((img, k) => ({ method: 'POST' as const, relative_url: `${act}/adimages`, name: `img${k}`, attached_files: `img${k}`, body: { name: img.fileName } }));
+          const files = Object.fromEntries(images.map((img, k) => [`img${k}`, { data: img.data, filename: img.fileName, type: 'image/jpeg' }]));
+          const up = await ctx.meta.batch(uploadOps, { purpose: 'test_adimages' }, files);
+          up.results.forEach((r, k) => {
+            const err = opError(r);
+            if (err) throw new Error(`adimages op ${k} failed: ${err.message} (code ${err.code})`);
+            hashes.set(images[k]!.id, Object.values((r.body as { images: Record<string, { hash: string }> }).images)[0]!.hash);
+          });
+          console.log(`upload batch: ${images.length} images, hashes ${[...hashes.values()].map((h) => h.slice(0, 8)).join(', ')}`);
+        }
 
         // 2. Structure straight from the template (interests from the file or the cache; placeholders launch broad).
         const campaignName = `CONVEYOR TEST ${todayTag()} ${fillPattern(t.campaign.name_pattern, { date: todayTag(), template: t.name })}`;
@@ -94,6 +103,17 @@ async function main() {
         const counts = launchCounts(structure, ops.filter((o) => o.relative_url.endsWith('adcreatives')).length, images.length);
         console.log(`object batch: ${counts.operations} operations in ${counts.batches} request(s) (${t.campaign.budget.mode})`);
 
+        if (DRY) {
+          assertPayloadRules(ops, t.campaign.budget.mode);
+          const kinds = ops.map((o) => o.relative_url.split('/').pop());
+          console.log(`payload rules: pass. ${kinds.filter((k) => k === 'campaigns').length} campaign, ${kinds.filter((k) => k === 'adsets').length} ad sets, ${kinds.filter((k) => k === 'adcreatives').length} creatives, ${kinds.filter((k) => k === 'ads').length} ads.`);
+          const campaign = ops[0]!.body!;
+          console.log(`campaign body: ${JSON.stringify({ ...campaign, name: undefined })}`);
+          const set = ops.find((o) => o.relative_url.endsWith('adsets'))!.body!;
+          console.log(`first ad set targeting: ${JSON.stringify(set.targeting)}`);
+          console.log(`first ad set budget fields: daily_budget=${String(set.daily_budget)} bid_strategy=${String(set.bid_strategy)} start_time=${String(set.start_time)}\n`);
+          continue;
+        }
         // 3. Send. Payload rules are asserted inside runObjectBatches before each batch.
         const out = await runObjectBatches(ctx.meta, ops, t.campaign.budget.mode, {}, { productId: 0, jobId: null }, (n, id) => void (created[n] = id));
         if (out.failed.length) {
@@ -120,7 +140,7 @@ async function main() {
         } else if (created.campaign) console.log(`kept campaign ${created.campaign} (--keep).\n`);
       }
     }
-    console.log(failures === 0 ? 'Both templates created paused campaigns without errors.' : `${failures} template(s) failed.`);
+    console.log(failures === 0 ? (DRY ? 'Dry run passed: both templates plan cleanly and pass the payload rules. Run without --dry-run to create them paused in Meta.' : 'Both templates created paused campaigns without errors.') : `${failures} template(s) failed.`);
   } finally {
     await ctx.close();
   }

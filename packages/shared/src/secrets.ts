@@ -11,6 +11,8 @@ export const SecretName = z.enum([
   'shopify_client_id',
   'shopify_client_secret',
   'meta_access_token',
+  /** Optional. When set, every Meta request carries appsecret_proof, which apps with "Require app secret" demand. */
+  'meta_app_secret',
 ]);
 export type SecretName = z.infer<typeof SecretName>;
 export const SECRET_NAMES = SecretName.options;

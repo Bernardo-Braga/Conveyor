@@ -7,7 +7,7 @@ import type { BatchOp } from './batch.ts';
 import { splitByDependencies, withSavedIds } from './batch.ts';
 import { opError, type MetaClient } from './client.ts';
 import { resolveVariantInterests } from './interests.ts';
-import { adFields, adSetFields, assertPayloadRules, campaignFields, creativeFields, type PayloadNote } from './payloadRules.ts';
+import { adFields, adSetFields, assertPayloadRules, campaignFields, creativeFields, fillUrlParams, type PayloadNote } from './payloadRules.ts';
 import { fillPattern, parseAgeBand, todayTag } from './templates.ts';
 
 type CreativeRow = typeof creatives.$inferSelect;
@@ -121,7 +121,7 @@ export function planOperations(p: PlanInput): { ops: BatchOp[]; notes: PayloadNo
   const act = p.adAccountId;
   const ops: BatchOp[] = [{ method: 'POST', relative_url: `${act}/campaigns`, name: 'campaign', body: campaignFields(t, p.structure.campaignName) }];
   const creativeNames = new Map<string, string>();
-  const urlParams = fillPattern(p.urlParams, { campaign: p.structure.campaignName, template: t.name, date: todayTag(p.now) });
+  const urlParams = fillUrlParams(p.urlParams, { campaign: p.structure.campaignName, template: t.name, date: todayTag(p.now) });
   p.structure.adSets.forEach((set) => {
     ops.push({ method: 'POST', relative_url: `${act}/adsets`, name: `set${set.index}`, body: adSetFields({ template: t, set, campaignRef: '{result=campaign:$.id}', pixelId: p.pixelId || t.adset.promoted_object.pixel_id || null, now: p.now, keepTimeOfDay: p.keepTimeOfDay, notes }) });
     set.ads.forEach((ad, j) => {

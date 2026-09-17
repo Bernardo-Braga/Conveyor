@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { VERSIONS } from '../../../../config/versions.ts';
 import type { LedgerClient } from '../http/ledgerClient.ts';
 import { JobStepError } from '../jobs/types.ts';
@@ -51,6 +52,16 @@ export class MetaClient {
     return this.deps.secrets.require('meta_access_token');
   }
 
+  /**
+   * `appsecret_proof` = HMAC-SHA256(token, app secret), sent as a query parameter when an app
+   * secret is saved. Apps with "Require app secret" reject calls without it. The token itself
+   * stays in the Authorization header, so neither reaches the ledger.
+   */
+  private async proofParams(token: string): Promise<Record<string, string>> {
+    const secret = await this.deps.secrets.get('meta_app_secret');
+    return secret ? { appsecret_proof: createHmac('sha256', secret).update(token).digest('hex') } : {};
+  }
+
   private readUsage(res: Response): void {
     const raw = res.headers.get('x-app-usage') ?? res.headers.get('x-ad-account-usage');
     if (!raw) return;
@@ -65,7 +76,9 @@ export class MetaClient {
   async get<T>(path: string, params: Record<string, string | number | boolean> = {}, meta: MetaMeta): Promise<{ data: T; requestId: string | null }> {
     const url = new URL(`${GRAPH}/${path.replace(/^\//, '')}`);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
-    const res = await this.deps.ledger.fetch({ service: 'meta', ...meta }, url, { headers: { authorization: `Bearer ${await this.token()}`, accept: 'application/json' } }, { retries: 1, retryDelayMs: 2_000 });
+    const token = await this.token();
+    for (const [k, v] of Object.entries(await this.proofParams(token))) url.searchParams.set(k, v);
+    const res = await this.deps.ledger.fetch({ service: 'meta', ...meta }, url, { headers: { authorization: `Bearer ${token}`, accept: 'application/json' } }, { retries: 1, retryDelayMs: 2_000 });
     this.readUsage(res);
     const requestId = res.headers.get('x-fb-trace-id') ?? res.headers.get('x-fb-request-id');
     const body = (await res.json().catch(() => ({}))) as T & { error?: MetaErrorBody };
@@ -74,10 +87,11 @@ export class MetaClient {
   }
 
   async post<T>(path: string, body: Record<string, unknown>, meta: MetaMeta): Promise<{ data: T; requestId: string | null }> {
+    const token = await this.token();
     const res = await this.deps.ledger.fetch(
       { service: 'meta', ...meta },
       `${GRAPH}/${path.replace(/^\//, '')}`,
-      { method: 'POST', headers: { authorization: `Bearer ${await this.token()}`, 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: encodeBody(body) },
+      { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: encodeBody({ ...body, ...(await this.proofParams(token)) }) },
       { retries: 1, retryDelayMs: 2_000 },
     );
     this.readUsage(res);
@@ -97,8 +111,10 @@ export class MetaClient {
     const form = new FormData();
     form.set('batch', JSON.stringify(ops.map((op) => ({ method: op.method, relative_url: op.relative_url, ...(op.body ? { body: encodeBody(op.body) } : {}), ...(op.name ? { name: op.name } : {}), ...(op.attached_files ? { attached_files: op.attached_files } : {}) }))));
     form.set('include_headers', 'false');
+    const token = await this.token();
+    for (const [k, v] of Object.entries(await this.proofParams(token))) form.set(k, v);
     for (const [name, f] of Object.entries(files)) form.append(name, new Blob([new Uint8Array(f.data)], { type: f.type }), f.filename);
-    const res = await this.deps.ledger.fetch({ service: 'meta', ...meta }, `${GRAPH}/`, { method: 'POST', headers: { authorization: `Bearer ${await this.token()}` }, body: form }, { retries: 1, retryDelayMs: 3_000, timeoutMs: 180_000 });
+    const res = await this.deps.ledger.fetch({ service: 'meta', ...meta }, `${GRAPH}/`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: form }, { retries: 1, retryDelayMs: 3_000, timeoutMs: 180_000 });
     this.readUsage(res);
     const requestId = res.headers.get('x-fb-trace-id') ?? res.headers.get('x-fb-request-id');
     const raw = (await res.json().catch(() => ({}))) as unknown;

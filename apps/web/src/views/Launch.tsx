@@ -27,6 +27,7 @@ export function LaunchView({ live }: { live: LiveState }) {
   const [board, setBoard] = useState<LaunchStructure | null>(null);
   const [creatives, setCreatives] = useState<CreativeView[]>([]);
   const [saveName, setSaveName] = useState('');
+  const [targetingChecks, setTargetingChecks] = useState<{ adSet: string; ok: boolean; message: string | null; estimate: { users_lower?: number; users_upper?: number } | null }[] | null>(null);
 
   const loadTemplates = useCallback(
     () =>
@@ -195,7 +196,21 @@ export function LaunchView({ live }: { live: LiveState }) {
                 {running ? sentence(running.currentStep ?? running.status) : `Create ${preview.mode} campaign, paused`}
               </Button>
               <span className="text-xs text-ink-3">{preview.structure.adSets.length} ad sets · {preview.structure.adSets.reduce((n, s) => n + s.ads.length, 0)} ads · nothing is activated by this button</span>
+              <Button kind="quiet" disabled={busy} title="One batch of delivery estimates; nothing is created" onClick={() => act(async () => setTargetingChecks((await launch.validateTargeting(product.id, preview.templateId, board)).checks), 'Targeting checked with Meta: one request.')}>
+                Check targeting with Meta
+              </Button>
             </div>
+            {targetingChecks && (
+              <ul className="mt-3 text-xs space-y-0.5">
+                {targetingChecks.map((c, i) => (
+                  <li key={i} className={c.ok ? 'text-green' : 'text-red'}>
+                    {c.ok ? '✓' : '✕'} {c.adSet}
+                    {c.ok && c.estimate?.users_lower != null && <span className="text-ink-3"> · about {c.estimate.users_lower.toLocaleString()}–{(c.estimate.users_upper ?? c.estimate.users_lower).toLocaleString()} people</span>}
+                    {!c.ok && <span> · {c.message}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Panel>
 
           <Panel
