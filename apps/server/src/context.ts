@@ -19,6 +19,8 @@ import { codexEngine } from './images/codexWorkers.ts';
 import { openaiEngine } from './images/openaiEngine.ts';
 import type { EngineSet } from './images/engine.ts';
 import { generateBatchJob } from './jobs/generateBatchJob.ts';
+import { MetaClient } from './meta/client.ts';
+import { activateJob, findInterestsJob, launchJob, pullInsightsJob, validateInterestsJob } from './jobs/metaJobs.ts';
 import type { ImageSettings } from '@conveyor/shared';
 
 export interface AppContext extends Services {
@@ -30,6 +32,7 @@ export interface AppContext extends Services {
   quota: QuotaStore;
   rapidapi: RapidApiClient;
   writers: WriterSet;
+  meta: MetaClient;
   dataDir: string;
   close(): Promise<void>;
 }
@@ -68,6 +71,8 @@ export function createContext(opts: ContextOptions = {}): AppContext {
     .register(pullProductJob({ shopify }))
     .register(listingJob({ shopify, writers }))
     .register(generateBatchJob({ shopify, engines }));
+  const meta = new MetaClient({ ledger, secrets });
+  registry.register(launchJob({ meta, shopify })).register(activateJob({ meta })).register(findInterestsJob({ meta })).register(validateInterestsJob({ meta })).register(pullInsightsJob({ meta }));
   const worker = new JobWorker(services, registry);
   // The import job chains into the listing job (a pasted link becomes a draft in 3 requests).
   registry.register(importJob({ rapidapi, quota, enqueue: (type, input, productId) => worker.enqueue(type, input, productId) }));
@@ -81,6 +86,7 @@ export function createContext(opts: ContextOptions = {}): AppContext {
     quota,
     rapidapi,
     writers,
+    meta,
     async close() {
       await worker.stop();
       opened.close();

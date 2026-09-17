@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ListingWriterId } from './listing.ts';
 import { ImageEngineId } from './creatives.ts';
+import { AdSetupSettings } from './meta.ts';
 
 /** Non-secret identifiers each connection needs. Keys themselves live in the Keychain. */
 export const ConnectionSettings = z.object({
@@ -93,6 +94,7 @@ export const SETTINGS_SECTIONS = {
   connections: ConnectionSettings,
   import: ImportSettings,
   images: ImageSettings,
+  adsetup: AdSetupSettings,
   rates: RatesCache,
 } as const;
 export type SettingsSection = keyof typeof SETTINGS_SECTIONS;

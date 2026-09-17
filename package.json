@@ -18,7 +18,8 @@
     "db:generate": "pnpm --filter @conveyor/server db:generate",
     "codex:smoke": "tsx scripts/codex-smoke.ts",
     "capture:fixtures": "tsx scripts/capture-rapidapi-fixtures.ts",
-    "writer:smoke": "tsx scripts/listing-writer-smoke.ts"
+    "writer:smoke": "tsx scripts/listing-writer-smoke.ts",
+    "meta:test-launch": "tsx scripts/meta-test-launch.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

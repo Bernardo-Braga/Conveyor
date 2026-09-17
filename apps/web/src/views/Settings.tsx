@@ -8,6 +8,7 @@ import { QuotaPanel } from '../components/QuotaPanel.tsx';
 import { ImportSettingsPanel } from '../components/ImportSettingsPanel.tsx';
 import { ImageSettingsPanel } from '../components/ImageSettingsPanel.tsx';
 import { PromptTemplatesPanel } from '../components/PromptTemplatesPanel.tsx';
+import { AdSetupPanel } from '../components/AdSetupPanel.tsx';
 
 const SECRET_LABELS: Record<SecretName, string> = {
   rapidapi_key: 'RapidAPI key',
@@ -91,6 +92,8 @@ export function SettingsView({ live }: { live: LiveState }) {
       <ImageSettingsPanel />
 
       <PromptTemplatesPanel />
+
+      <AdSetupPanel />
     </div>
   );
 }

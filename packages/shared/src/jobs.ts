@@ -12,6 +12,7 @@ export const JobType = z.enum([
   'find_interests',
   'validate_interests',
   'launch',
+  'activate_campaign',
   'read_campaign',
   'apply_edits',
   'pull_insights',

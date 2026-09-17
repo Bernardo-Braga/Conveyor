@@ -138,6 +138,10 @@ export const templates = sqliteTable(
     version: integer('version').notNull(),
     source: text('source').notNull(),
     json: text('json', { mode: 'json' }).notNull(),
+    /** The JSON file under the data directory's templates/ folder this row mirrors. */
+    filePath: text('file_path'),
+    fileMtime: text('file_mtime'),
+    fileMissing: integer('file_missing', { mode: 'boolean' }).notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

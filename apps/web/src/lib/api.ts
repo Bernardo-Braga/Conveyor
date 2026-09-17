@@ -59,3 +59,31 @@ export const studio = {
   saveTemplate: (id: number, body: PromptTemplateInput) => request<PromptTemplateView>(`/prompt-templates/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   setDefaultTemplate: (id: number) => request<PromptTemplateView>(`/prompt-templates/${id}/default`, { method: 'POST' }),
 };
+
+// Phase 6: Launch
+import type { CampaignView, InterestRef, LaunchPreview, TemplateView } from '@conveyor/shared';
+export interface TemplateList {
+  templates: TemplateView[];
+  folder: { dir: string; files: number };
+  sync: { added: string[]; updated: string[]; missing: string[]; skipped: { file: string; reason: string }[] };
+}
+export const launch = {
+  templates: () => request<TemplateList>('/templates'),
+  template: (id: number) => request<{ view: TemplateView; json: Record<string, unknown> }>(`/templates/${id}`),
+  saveTemplate: (id: number, json: Record<string, unknown>) => request<{ view: TemplateView; json: Record<string, unknown> }>(`/templates/${id}`, { method: 'PUT', body: JSON.stringify({ json }) }),
+  duplicateTemplate: (id: number, name?: string) => request<TemplateView>(`/templates/${id}/duplicate`, { method: 'POST', body: JSON.stringify(name ? { name } : {}) }),
+  deleteTemplate: (id: number) => request<{ ok: true; movedTo: string | null }>(`/templates/${id}`, { method: 'DELETE' }),
+  importTemplate: (raw: unknown) => request<TemplateView>('/templates', { method: 'POST', body: JSON.stringify(raw) }),
+  setDefaultTemplate: (id: number) => request<TemplateView[]>(`/templates/${id}/default`, { method: 'POST' }),
+  exportUrl: (id: number, backup = false) => `/api/templates/${id}/export${backup ? '?backup=1' : ''}`,
+  preview: (productId: number, templateId: number, acknowledge: string[]) => request<LaunchPreview>(`/products/${productId}/launch-preview?templateId=${templateId}&acknowledge=${acknowledge.join(',')}`),
+  start: (productId: number, templateId: number, acknowledge: string[]) => request<JobView>(`/products/${productId}/launch`, { method: 'POST', body: JSON.stringify({ templateId, acknowledge }) }),
+  campaigns: (productId: number) => request<CampaignView[]>(`/products/${productId}/campaigns`),
+  resume: (campaignId: number) => request<JobView>(`/campaigns/${campaignId}/resume`, { method: 'POST' }),
+  activate: (campaignId: number) => request<JobView>(`/campaigns/${campaignId}/activate`, { method: 'POST' }),
+  pause: (campaignId: number) => request<JobView>(`/campaigns/${campaignId}/pause`, { method: 'POST' }),
+  previews: (campaignId: number, format: string) => request<{ creativeId: string; html: string | null; code: number }[]>(`/campaigns/${campaignId}/previews?format=${format}`, { method: 'POST' }),
+  findInterests: (labels: string[], productId: number | null) => request<JobView>('/interests/find', { method: 'POST', body: JSON.stringify({ labels, productId }) }),
+  pickInterest: (label: string, interest: InterestRef) => request<{ ok: true }>('/interests/pick', { method: 'POST', body: JSON.stringify({ label, interest }) }),
+  refreshInsights: () => request<JobView>('/insights/refresh', { method: 'POST' }),
+};

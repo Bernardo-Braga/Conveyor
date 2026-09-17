@@ -8,3 +8,4 @@ export * from './supplier.ts';
 export * from './products.ts';
 export * from './listing.ts';
 export * from './creatives.ts';
+export * from './meta.ts';

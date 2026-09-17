@@ -1,0 +1,4 @@
+[
+  { "code": 200, "body": "{\"data\":[{\"id\":\"6003290737525\",\"name\":\"Formal wear\",\"audience_size_lower_bound\":120000000,\"path\":[\"Interests\",\"Shopping and fashion\",\"Clothing\",\"Formal wear\"],\"topic\":\"Shopping and fashion\"},{\"id\":\"6003123456789\",\"name\":\"Formal wear (fashion)\",\"audience_size_lower_bound\":9000000,\"path\":[\"Interests\"]}]}" },
+  { "code": 200, "body": "{\"data\":[{\"id\":\"6003394817\",\"name\":\"Loafers (footwear)\",\"audience_size_lower_bound\":5000000,\"path\":[\"Interests\"]},{\"id\":\"6003394818\",\"name\":\"Penny loafer\",\"audience_size_lower_bound\":800000,\"path\":[\"Interests\"]}]}" }
+]

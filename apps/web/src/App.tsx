@@ -4,11 +4,12 @@ import { Button } from './components/Panel.tsx';
 import { api } from './lib/api.ts';
 import { useServerEvents } from './lib/events.ts';
 import { LaunchView } from './views/Launch.tsx';
+import { TemplatesView } from './views/Templates.tsx';
 import { LineView } from './views/Line.tsx';
 import { SettingsView } from './views/Settings.tsx';
 import { StudioView } from './views/Studio.tsx';
 
-const VIEWS = ['Line', 'Studio', 'Launch', 'Settings'] as const;
+const VIEWS = ['Line', 'Studio', 'Launch', 'Templates', 'Settings'] as const;
 type View = (typeof VIEWS)[number];
 
 export function App() {
@@ -68,7 +69,8 @@ export function App() {
         <div className="max-w-6xl mx-auto px-6 py-6">
           {view === 'Line' && <LineView live={live} />}
           {view === 'Studio' && <StudioView live={live} />}
-          {view === 'Launch' && <LaunchView />}
+          {view === 'Launch' && <LaunchView live={live} />}
+          {view === 'Templates' && <TemplatesView />}
           {view === 'Settings' && <SettingsView live={live} />}
         </div>
       </main>
