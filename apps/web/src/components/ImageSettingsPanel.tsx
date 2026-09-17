@@ -25,7 +25,7 @@ export function ImageSettingsPanel() {
         <Field label="Engine" hint="Codex workers run on your ChatGPT plan and make no API requests">
           <select className={inputClass} value={s.engine} onChange={(e) => setS({ ...s, engine: e.target.value as ImageSettings['engine'] })}>
             <option value="codex">Codex workers (default)</option>
-            <option value="openai">OpenAI API (phase 5)</option>
+            <option value="openai">OpenAI API (gpt-image-2, billed per request)</option>
           </select>
         </Field>
         <Field label="Codex workers" hint="1 to 4 concurrent processes, each in its own folder">

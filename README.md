@@ -5,7 +5,8 @@ A local macOS control panel that takes a supplier link through to a Shopify draf
 ## Setup
 
 - Node 24 or newer, pnpm 10 (`corepack enable` picks the pinned version), `brew install exiftool`.
-- Codex CLI installed and signed in with ChatGPT (`codex login`).
+- Codex CLI installed and signed in with ChatGPT (`codex login`). Image workers and the fallback listing writer run on that plan.
+- Optional: an OpenAI API key with `gpt-image-2` access, for the backup image engine that takes over after a Codex plan limit or two failed tasks.
 - Claude Code installed and signed in with your Claude plan (`claude auth login`). No Claude Console account or `ANTHROPIC_API_KEY` is needed; Conveyor strips keys from the writer's environment so the plan login is always used.
 - Data lives in `~/Library/Application Support/Conveyor/data`. Override with `CONVEYOR_DATA_DIR`. Each product gets a folder under `products/` (listing photos, references, creatives); Codex image workers run under `workers/`.
 - Keys live in the macOS Keychain (service `Conveyor`). Add them under Settings, Connections.

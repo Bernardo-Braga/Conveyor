@@ -16,6 +16,7 @@ import { QuotaStore } from './suppliers/quota.ts';
 import { RapidApiClient } from './suppliers/rapidapi.ts';
 import { makeWriters, type RunCli, type WriterSet } from './listing/writers/index.ts';
 import { codexEngine } from './images/codexWorkers.ts';
+import { openaiEngine } from './images/openaiEngine.ts';
 import type { EngineSet } from './images/engine.ts';
 import { generateBatchJob } from './jobs/generateBatchJob.ts';
 import type { ImageSettings } from '@conveyor/shared';
@@ -60,7 +61,7 @@ export function createContext(opts: ContextOptions = {}): AppContext {
   /** Engines are built per batch from the image settings; tests inject the same fake CLI runner. */
   const engines = (img: ImageSettings): EngineSet => ({
     codex: codexEngine({ workers: img.codex.workers, imagesPerTask: img.codex.imagesPerTask, timeLimitPerImageMs: img.codex.timeLimitPerImageSec * 1000, db, ...(opts.runCli ? { run: opts.runCli, pollMs: 20 } : {}) }),
-    // openai: added in phase 5.
+    openai: openaiEngine({ ledger, secrets, db, settings: img.openai }),
   });
   const registry = new JobRegistry()
     .register(connectionTestJob(shopifyTokens))

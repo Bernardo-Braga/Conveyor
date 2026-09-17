@@ -17,6 +17,8 @@ export interface Recorded {
   method: string;
   headers: Record<string, string>;
   body: string | null;
+  /** Multipart fields when the body was FormData: files appear as `{ name, type, size }`. */
+  form: Record<string, string | { name: string; type: string; size: number }[]> | null;
 }
 
 export type Route = (req: Recorded) => Response | Promise<Response>;
@@ -33,7 +35,19 @@ export function fakeFetch(routes: Record<string, Route> = {}) {
     new Headers(init?.headers ?? {}).forEach((v, k) => (headers[k] = v));
     const b = init?.body;
     const body = b == null ? null : typeof b === 'string' ? b : b instanceof URLSearchParams ? b.toString() : '[binary]';
-    const rec: Recorded = { url, method: (init?.method ?? 'GET').toUpperCase(), headers, body };
+    let form: Recorded['form'] = null;
+    if (b instanceof FormData) {
+      form = {};
+      for (const [k, v] of b.entries()) {
+        if (typeof v === 'string') form[k] = v;
+        else {
+          const files = (form[k] as { name: string; type: string; size: number }[] | undefined) ?? [];
+          files.push({ name: v.name, type: v.type, size: v.size });
+          form[k] = files;
+        }
+      }
+    }
+    const rec: Recorded = { url, method: (init?.method ?? 'GET').toUpperCase(), headers, body, form };
     calls.push(rec);
     const key = Object.keys(routes).find((k) => url.includes(k));
     if (!key) throw new TypeError(`fetch failed: no route for ${url}`);

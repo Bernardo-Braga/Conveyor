@@ -1,0 +1,8 @@
+{
+ "error": {
+  "message": "Invalid value: 4. Supported value for n is 1 for this model.",
+  "type": "invalid_request_error",
+  "param": "n",
+  "code": "invalid_value"
+ }
+}

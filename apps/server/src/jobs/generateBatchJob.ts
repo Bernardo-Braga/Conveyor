@@ -219,7 +219,8 @@ export function generateBatchJob(deps: { shopify: ShopifyClient; engines: (setti
         async run(ctx) {
           const { batchId } = ctx.prior.plan as { batchId: number };
           const total = ctx.db.select({ id: creatives.id }).from(creatives).where(eq(creatives.batchId, batchId)).all().length;
-          ctx.db.update(creativeBatches).set({ status: 'done', note: null, finishedAt: new Date().toISOString() }).where(eq(creativeBatches.id, batchId)).run();
+          // The note stays: it records a hand-off even when the batch ended complete.
+          ctx.db.update(creativeBatches).set({ status: 'done', finishedAt: new Date().toISOString() }).where(eq(creativeBatches.id, batchId)).run();
           setState(ctx.db, ctx.input.productId, 'review', { failure: null });
           ctx.log(`${total} images ready for review.`);
           return { finished: total, total };
