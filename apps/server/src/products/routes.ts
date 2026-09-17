@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { AddToLineInput, Platform, type AddToLineResult, type ShopifySearchHit } from '@conveyor/shared';
+import { AddToLineInput, FromHandleInput, Platform, type AddToLineResult, type ShopifySearchHit } from '@conveyor/shared';
 import type { AppContext } from '../context.ts';
 import { jobs, products } from '../db/schema.ts';
 import { JobStepError } from '../jobs/types.ts';
@@ -41,6 +41,16 @@ export function productRoutes(ctx: AppContext) {
     if (existing) return c.json<AddToLineResult>({ kind: 'duplicate', productId: existing.id });
     const row = ctx.db.insert(products).values({ origin: 'shopify', shopifyProductId, state: 'from_shopify' }).returning().get();
     const job = ctx.worker.enqueue('pull_product', { productId: row.id, shopifyProductId }, row.id);
+    return c.json<AddToLineResult>({ kind: 'importing', productId: row.id, jobId: job.id }, 202);
+  });
+
+  /** A template's product by its URL handle: local when it is on the Line, otherwise 1 Shopify query. */
+  r.post('/line/from-handle', async (c) => {
+    const { handle } = FromHandleInput.parse(await c.req.json());
+    const existing = ctx.db.select({ id: products.id }).from(products).where(eq(products.shopifyHandle, handle)).get();
+    if (existing) return c.json<AddToLineResult>({ kind: 'duplicate', productId: existing.id });
+    const row = ctx.db.insert(products).values({ origin: 'shopify', shopifyHandle: handle, state: 'from_shopify' }).returning().get();
+    const job = ctx.worker.enqueue('pull_product', { productId: row.id, shopifyProductId: null, handle }, row.id);
     return c.json<AddToLineResult>({ kind: 'importing', productId: row.id, jobId: job.id }, 202);
   });
 

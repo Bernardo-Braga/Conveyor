@@ -84,19 +84,38 @@ export function TemplatesView() {
       await load();
     }, 'Saved to the file.');
 
+  const [proposal, setProposal] = useState<{ signature: string; mapping: Record<string, { from: string | null; value?: unknown }>; preview: Record<string, unknown>; problems: string[]; writer: string; raw: Record<string, unknown> } | null>(null);
   const importFile = (file: File) =>
     act(async () => {
-      const t = await launch.importTemplate(JSON.parse(await file.text()));
-      await load();
-      setSelected(t.id);
-    }, 'Added to the folder.');
+      const raw = JSON.parse(await file.text()) as Record<string, unknown>;
+      const r = await launch.importTemplate(raw);
+      if (r.kind === 'imported') {
+        await load();
+        setSelected(r.template.id);
+        setMsg(`Added to the folder (${r.format} format). ${r.notes.join(' ')}`);
+      } else if (r.kind === 'proposal') {
+        setProposal({ ...r, raw });
+        setMsg(`Unknown format. ${r.writer} proposed a mapping; check it below and confirm.`);
+      } else setMsg(r.message);
+    });
+  const confirmProposal = () =>
+    act(async () => {
+      if (!proposal) return;
+      const r = await launch.confirmImport({ signature: proposal.signature, mapping: proposal.mapping, raw: proposal.raw });
+      if (r.kind === 'imported') {
+        setProposal(null);
+        await load();
+        setSelected(r.template.id);
+        setMsg(`Imported. ${r.notes.join(' ')}`);
+      }
+    });
 
   const mode = get(doc, ['campaign', 'budget', 'mode']) as string | undefined;
   const variants = useMemo(() => (Array.isArray(get(doc, ['adset_variants'])) ? (get(doc, ['adset_variants']) as Json[]) : []), [doc]);
   const targeting = (get(doc, ['adset', 'targeting']) as Json | undefined) ?? {};
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[18rem_1fr] items-start">
       <Panel
         title="Templates"
         action={
@@ -130,6 +149,35 @@ export function TemplatesView() {
           {list && list.templates.length === 0 && <li className="px-5 py-3 text-sm text-ink-3">No templates in the folder yet.</li>}
         </ul>
       </Panel>
+
+      {proposal && (
+        <Panel title="Proposed mapping" action={<span className="flex gap-2"><Button kind="quiet" onClick={() => setProposal(null)}>Discard</Button><Button kind="primary" disabled={busy || proposal.problems.some((p) => !/^note/i.test(p) && /empty|nothing found/i.test(p))} onClick={confirmProposal}>Confirm and save profile</Button></span>}>
+          <p className="text-sm text-ink-2 mb-3">One writer run proposed how this file maps onto the template. Edit a source path or value, then confirm. Files of the same shape will import with 0 requests from then on.</p>
+          {proposal.problems.length > 0 && (
+            <ul className="text-xs text-amber mb-3 space-y-0.5">
+              {proposal.problems.map((p, i) => (
+                <li key={i}>! {p}</li>
+              ))}
+            </ul>
+          )}
+          <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr] text-xs">
+            <span className="font-medium text-ink-2">Template field</span>
+            <span className="font-medium text-ink-2">From (path in your file)</span>
+            <span className="font-medium text-ink-2">Or a fixed value</span>
+            {Object.entries(proposal.mapping).map(([target, rule]) => (
+              <>
+                <code key={`${target}-t`} className="py-1.5">{target}</code>
+                <input key={`${target}-f`} className={inputClass} value={rule.from ?? ''} onChange={(e) => setProposal({ ...proposal, mapping: { ...proposal.mapping, [target]: { ...rule, from: e.target.value || null } } })} />
+                <input key={`${target}-v`} className={inputClass} value={rule.value == null ? '' : String(rule.value)} onChange={(e) => setProposal({ ...proposal, mapping: { ...proposal.mapping, [target]: { ...rule, value: e.target.value === '' ? undefined : e.target.value } } })} />
+              </>
+            ))}
+          </div>
+          <details className="mt-3 text-xs">
+            <summary className="cursor-pointer text-ink-2">Preview of the template this produces</summary>
+            <pre className="mt-2 p-2 bg-panel-2 rounded-md overflow-x-auto max-h-64">{JSON.stringify(proposal.preview, null, 2)}</pre>
+          </details>
+        </Panel>
+      )}
 
       {doc && view && (
         <Panel

@@ -177,6 +177,11 @@ describe('launching', () => {
 
   it('Whitcombe: 36 operations, campaign sends sharing false and no budget, ad sets 2000 each; placeholders launch broad after acknowledgement', async () => {
     const t = await setup('templates/whitcombe-abo.json', 5);
+    // The fixture's start time (17 Sep 2026) is now in the past; pin a future one so the "kept" branch is exercised.
+    const FUTURE = '2030-01-15T10:00:00.000Z';
+    const stored = Template.parse(fixture('templates/whitcombe-abo.json'));
+    stored.adset.schedule.start_time = FUTURE;
+    storeTemplate(t.ctx.db, stored, 'file');
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId, acknowledge: ['interest_placeholder'] });
     await t.ctx.worker.drain();
     const job = t.ctx.worker.list().find((j) => j.type === 'launch')!;
@@ -189,7 +194,7 @@ describe('launching', () => {
     const sets = objects.filter((o) => o.relative_url.endsWith('adsets')).map((o) => new URLSearchParams(o.body));
     expect(sets).toHaveLength(5);
     expect(sets.every((s) => s.get('daily_budget') === '2000' && s.get('bid_strategy') === 'LOWEST_COST_WITHOUT_CAP')).toBe(true);
-    expect(sets.every((s) => Number(s.get('start_time')) === Math.floor(new Date('2026-09-17T10:00:00.000Z').getTime() / 1000))).toBe(true);
+    expect(sets.every((s) => Number(s.get('start_time')) === Math.floor(new Date(FUTURE).getTime() / 1000))).toBe(true);
     await t.ctx.close();
   });
 

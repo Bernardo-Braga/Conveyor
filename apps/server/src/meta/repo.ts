@@ -1,5 +1,5 @@
 import { desc, eq, inArray } from 'drizzle-orm';
-import { CampaignView, type BudgetMode, type InterestRef, type LaunchStructure } from '@conveyor/shared';
+import { CampaignView, type BudgetMode, type InterestRef, type LaunchStructure, type LiveCampaign, type LiveDiff } from '@conveyor/shared';
 import type { Db } from '../db/index.ts';
 import { adSets, ads, campaigns } from '../db/schema.ts';
 
@@ -12,6 +12,9 @@ export interface LaunchState {
   operations: number;
   error: string | null;
   adAccountId: string;
+  /** The last state read from Meta, and what differed from the read before it. */
+  live?: LiveCampaign | null;
+  lastDiff?: LiveDiff[];
 }
 
 export function readState(row: typeof campaigns.$inferSelect): LaunchState {

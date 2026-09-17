@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CampaignView, LaunchPreview, ProductView, TemplateView } from '@conveyor/shared';
+import type { CampaignView, CreativeView, LaunchAdSet, LaunchPreview, LaunchStructure, LiveCampaign, LiveChange, LiveDiff, ProductView, TemplateView } from '@conveyor/shared';
+import { Board } from '../components/Board.tsx';
 import { Badge, Button, Panel, inputClass } from '../components/Panel.tsx';
-import { ApiError, launch, line } from '../lib/api.ts';
+import { ApiError, launch, line, studio } from '../lib/api.ts';
 import type { LiveState } from '../lib/events.ts';
 import { formatDateTime, formatMoney, sentence } from '../lib/format.ts';
 
@@ -23,6 +24,9 @@ export function LaunchView({ live }: { live: LiveState }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [previews, setPreviews] = useState<{ creativeId: string; html: string | null }[] | null>(null);
+  const [board, setBoard] = useState<LaunchStructure | null>(null);
+  const [creatives, setCreatives] = useState<CreativeView[]>([]);
+  const [saveName, setSaveName] = useState('');
 
   const loadTemplates = useCallback(
     () =>
@@ -44,8 +48,13 @@ export function LaunchView({ live }: { live: LiveState }) {
   const refresh = useCallback(async () => {
     if (productId == null) return;
     await launch.campaigns(productId).then(setCampaigns).catch(() => undefined);
-    if (templateId != null) await launch.preview(productId, templateId, acknowledged).then(setPreview).catch((e) => setNotice(e instanceof ApiError ? e.message : 'Could not build the preview.'));
-  }, [productId, templateId, acknowledged]);
+    if (templateId != null) {
+      const req = board ? launch.previewStructure(productId, templateId, acknowledged, board) : launch.preview(productId, templateId, acknowledged);
+      await req.then(setPreview).catch((e) => setNotice(e instanceof ApiError ? e.message : 'Could not build the preview.'));
+    }
+    await studio.batches(productId).then((bs) => setCreatives(bs.flatMap((b) => b.creatives).filter((c) => c.status === 'finished' && c.approval === 'approved'))).catch(() => undefined);
+  }, [productId, templateId, acknowledged, board]);
+  useEffect(() => setBoard(null), [productId, templateId]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -182,46 +191,88 @@ export function LaunchView({ live }: { live: LiveState }) {
               </div>
             )}
             <div className="mt-4 flex items-center gap-3">
-              <Button kind="primary" disabled={busy || !!running || !preview.canLaunch} onClick={() => act(() => launch.start(product.id, preview.templateId, acknowledged), 'Launching. Everything is created paused.')}>
+              <Button kind="primary" disabled={busy || !!running || !preview.canLaunch} onClick={() => act(() => launch.start(product.id, preview.templateId, acknowledged, board), 'Launching. Everything is created paused.')}>
                 {running ? sentence(running.currentStep ?? running.status) : `Create ${preview.mode} campaign, paused`}
               </Button>
               <span className="text-xs text-ink-3">{preview.structure.adSets.length} ad sets · {preview.structure.adSets.reduce((n, s) => n + s.ads.length, 0)} ads · nothing is activated by this button</span>
             </div>
           </Panel>
 
-          <Panel title={`Structure · ${preview.structure.campaignName}`} action={<span className="text-xs text-ink-3">Board editing arrives in phase 7</span>}>
-            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
-              {preview.structure.adSets.map((s) => (
-                <div key={s.index} className="border border-line rounded-panel p-3 bg-panel-2 text-xs">
-                  <p className="font-medium text-sm truncate" title={s.name}>
-                    {s.name}
-                  </p>
-                  <p className="text-ink-3 mt-0.5">
-                    {s.budgetMinor != null ? `${formatMoney(s.budgetMinor)} per day` : 'Campaign budget'}
-                    {s.countryOverride && ` · ${s.countryOverride}`}
-                    {s.ageBand && ` · ${s.ageBand[0]}–${s.ageBand[1]}`}
-                  </p>
-                  <p className="mt-1">
-                    {s.interestKind === 'broad' && <Badge tone="grey">Broad</Badge>}
-                    {s.interestKind === 'placeholder' && <Badge tone="amber">Placeholder</Badge>}
-                    {s.interestKind === 'unmatched' && <Badge tone="amber">Needs a pick</Badge>}
-                    {s.interests.map((i) => (
-                      <Badge key={i.id} tone="cobalt">
-                        {i.name}
-                      </Badge>
-                    ))}
-                  </p>
-                  <ul className="mt-2 space-y-0.5 text-ink-2">
-                    {s.ads.map((a, i) => (
-                      <li key={i} className="truncate" title={a.fileName}>
-                        {a.fileName}
-                      </li>
-                    ))}
-                    {!s.ads.length && <li className="text-red">No ads</li>}
-                  </ul>
-                </div>
-              ))}
-            </div>
+          <Panel
+            title={board ? 'Board' : `Structure · ${preview.structure.campaignName}`}
+            action={
+              <span className="flex items-center gap-2">
+                {board ? (
+                  <>
+                    <input className={`${inputClass} !w-48 !py-1 text-xs`} placeholder="Save as template: name" value={saveName} onChange={(e) => setSaveName(e.target.value)} />
+                    <Button kind="quiet" disabled={!saveName.trim() || busy} onClick={() => act(() => launch.saveBoard(preview.templateId, saveName.trim(), board).then(async () => { setSaveName(''); await loadTemplates(); }), 'Saved as a new template file.')}>
+                      Save as template
+                    </Button>
+                    <Button kind="quiet" onClick={() => setBoard(null)}>
+                      Discard edits
+                    </Button>
+                  </>
+                ) : (
+                  <Button kind="quiet" onClick={() => setBoard(structuredClone(preview.structure))}>
+                    Edit board
+                  </Button>
+                )}
+              </span>
+            }
+          >
+            {board ? (
+              <Board
+                structure={board}
+                mode={preview.mode}
+                creatives={creatives}
+                copies={copiesFor(preview.structure)}
+                busy={busy}
+                onChange={setBoard}
+                onRename={async (index, name) => {
+                  try {
+                    const r = await launch.resolveInterest(name, product.id);
+                    setNotice(r.requests ? `Interest lookup for "${r.label}": 1 request.` : 'Interest read from the cache. 0 requests.');
+                    const set = board.adSets.find((x) => x.index === index)!;
+                    return { ...set, name, interestKind: r.kind as LaunchAdSet['interestKind'], interestLabel: r.label, interests: r.interests, suggestions: r.suggestions };
+                  } catch {
+                    return null;
+                  }
+                }}
+              />
+            ) : (
+              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
+                {preview.structure.adSets.map((s) => (
+                  <div key={s.index} className="border border-line rounded-panel p-3 bg-panel-2 text-xs">
+                    <p className="font-medium text-sm truncate" title={s.name}>
+                      {s.name}
+                    </p>
+                    <p className="text-ink-3 mt-0.5">
+                      {s.budgetMinor != null ? `${formatMoney(s.budgetMinor)} per day` : 'Campaign budget'}
+                      {s.countryOverride && ` · ${s.countryOverride}`}
+                      {s.ageBand && ` · ${s.ageBand[0]}–${s.ageBand[1]}`}
+                    </p>
+                    <p className="mt-1">
+                      {s.interestKind === 'broad' && <Badge tone="grey">Broad</Badge>}
+                      {s.interestKind === 'placeholder' && <Badge tone="amber">Placeholder</Badge>}
+                      {s.interestKind === 'unmatched' && <Badge tone="amber">Needs a pick</Badge>}
+                      {s.interests.map((i) => (
+                        <Badge key={i.id} tone="cobalt">
+                          {i.name}
+                        </Badge>
+                      ))}
+                    </p>
+                    <ul className="mt-2 space-y-0.5 text-ink-2">
+                      {s.ads.map((a, i) => (
+                        <li key={i} className="truncate" title={a.fileName}>
+                          {a.fileName}
+                        </li>
+                      ))}
+                      {!s.ads.length && <li className="text-red">No ads</li>}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </Panel>
         </>
       )}
@@ -261,6 +312,7 @@ export function LaunchView({ live }: { live: LiveState }) {
                   </span>
                 </header>
                 {c.lastError && <p className="text-xs text-red mt-2">{c.lastError}</p>}
+                {c.metaCampaignId && <LiveEditor campaign={c} creatives={creatives} copies={preview ? copiesFor(preview.structure) : []} busy={busy} act={act} running={!!running} />}
                 <div className="mt-3 grid gap-2 md:grid-cols-3 lg:grid-cols-5 text-xs">
                   {c.adSets.map((s) => (
                     <div key={s.id} className="bg-panel-2 rounded-md p-2">
@@ -302,4 +354,227 @@ export function LaunchView({ live }: { live: LiveState }) {
       )}
     </div>
   );
+}
+
+
+function copiesFor(structure: LaunchStructure) {
+  const seen = new Map<string, { label: string; primaryText: string; headline: string; description: string; destinationUrl: string }>();
+  for (const s of structure.adSets) for (const a of s.ads) {
+    const key = `${a.primaryText}|${a.headline}`;
+    if (!seen.has(key)) seen.set(key, { label: seen.size === 0 ? 'Product copy' : `Copy ${seen.size + 1}`, primaryText: a.primaryText, headline: a.headline, description: a.description, destinationUrl: a.destinationUrl });
+  }
+  return [...seen.values()];
+}
+
+/** Editing a live campaign (PLAN.md section 9.7): one read, a change list, one batch. */
+function LiveEditor({ campaign, creatives, copies, busy, act, running }: { campaign: CampaignView; creatives: CreativeView[]; copies: ReturnType<typeof copiesFor>; busy: boolean; act: (fn: () => Promise<unknown>, note?: string) => Promise<void>; running: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [live, setLive] = useState<LiveCampaign | null>(null);
+  const [diff, setDiff] = useState<LiveDiff[]>([]);
+  const [mode, setMode] = useState<'CBO' | 'ABO'>(campaign.mode);
+  const [changes, setChanges] = useState<LiveChange[]>([]);
+  const [plan, setPlan] = useState<{ warnings: string[]; requests: number; operations: number } | null>(null);
+  const [ack, setAck] = useState(false);
+  const [draft, setDraft] = useState<{ name: string; creativeId: number | null }>({ name: '', creativeId: null });
+
+  const load = useCallback(async () => {
+    const r = await launch.live(campaign.id).catch(() => null);
+    if (!r) return;
+    setLive(r.live);
+    setDiff(r.diff);
+    setMode(r.mode);
+  }, [campaign.id]);
+  useEffect(() => {
+    if (open) void load();
+  }, [open, load, campaign.lastReadAt]);
+  useEffect(() => {
+    if (!live || !changes.length) return setPlan(null);
+    launch.previewEdits(campaign.id, { changes, basedOn: live.readAt, acknowledgeLearning: ack }).then(setPlan).catch(() => setPlan(null));
+  }, [changes, live, ack, campaign.id]);
+
+  const add = (c: LiveChange) => setChanges((cs) => [...cs, c]);
+  const setName = (s: { id: string; name: string }) => s.name;
+
+  if (!open) {
+    return (
+      <div className="mt-3">
+        <Button kind="quiet" onClick={() => setOpen(true)}>
+          Edit live campaign
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 border-t border-line pt-3 space-y-3 text-xs">
+      <div className="flex items-center gap-2">
+        <Button disabled={busy || running} onClick={() => act(() => launch.readCampaign(campaign.id), 'Reading from Meta: one request.')}>
+          Read from Meta
+        </Button>
+        <span className="text-ink-3">{live ? `Last read ${new Date(live.readAt).toLocaleTimeString()} · ${live.status}` : 'Not read yet. Every edit starts with one read.'}</span>
+        <Button kind="quiet" onClick={() => { setOpen(false); setChanges([]); }}>
+          Close
+        </Button>
+      </div>
+      {diff.length > 0 && (
+        <div className="bg-amber-soft text-amber rounded-md p-2">
+          <p className="font-medium">Changed in Meta since the previous read:</p>
+          <ul>
+            {diff.map((d, i) => (
+              <li key={i}>
+                {d.path}: {JSON.stringify(d.before)} → {JSON.stringify(d.after)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {live && (
+        <>
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="font-medium text-sm">{live.name}</span>
+            <Button kind="quiet" onClick={() => add({ type: 'campaign_status', status: live.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' })}>
+              {live.status === 'ACTIVE' ? 'Pause campaign' : 'Resume campaign'}
+            </Button>
+            <Button kind="quiet" onClick={() => { const n = prompt('New campaign name', live.name); if (n) add({ type: 'rename_campaign', name: n }); }}>
+              Rename
+            </Button>
+            {mode === 'CBO' && (
+              <Button kind="quiet" onClick={() => { const v = prompt('Campaign daily budget ($)', live.dailyBudgetMinor != null ? (live.dailyBudgetMinor / 100).toFixed(2) : ''); if (v) add({ type: 'campaign_budget', dailyBudgetMinor: Math.round(Number.parseFloat(v) * 100) }); }}>
+                Budget {live.dailyBudgetMinor != null ? formatMoney(live.dailyBudgetMinor) : ''}
+              </Button>
+            )}
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {live.adSets.map((s) => (
+              <div key={s.id} className="bg-panel-2 rounded-md p-2 space-y-1">
+                <p className="font-medium truncate" title={setName(s)}>
+                  {s.name} <span className="text-ink-3 font-normal">· {s.status}</span>
+                </p>
+                <p className="text-ink-3">
+                  {mode === 'ABO' ? (s.dailyBudgetMinor != null ? `${formatMoney(s.dailyBudgetMinor)}/day` : 'no budget') : 'campaign budget'} · {s.interests.length ? s.interests.map((i) => i.name).join(', ') : 'broad'}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  <Button kind="quiet" className="!px-2 !py-0.5" onClick={() => add({ type: 'adset_status', adSetId: s.id, status: s.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' })}>
+                    {s.status === 'ACTIVE' ? 'Pause' : 'Resume'}
+                  </Button>
+                  <Button kind="quiet" className="!px-2 !py-0.5" onClick={() => { const n = prompt('New ad set name', s.name); if (n) add({ type: 'rename_adset', adSetId: s.id, name: n }); }}>
+                    Rename
+                  </Button>
+                  {mode === 'ABO' && (
+                    <Button kind="quiet" className="!px-2 !py-0.5" onClick={() => { const v = prompt('Daily budget ($)', s.dailyBudgetMinor != null ? (s.dailyBudgetMinor / 100).toFixed(2) : ''); if (v) add({ type: 'adset_budget', adSetId: s.id, dailyBudgetMinor: Math.round(Number.parseFloat(v) * 100) }); }}>
+                      Budget
+                    </Button>
+                  )}
+                  <Button kind="quiet" className="!px-2 !py-0.5" onClick={() => { const v = prompt('Interests as id:name, comma separated (empty = broad)', s.interests.map((i) => `${i.id}:${i.name}`).join(', ')); if (v !== null) add({ type: 'adset_interests', adSetId: s.id, interests: v.split(',').map((x) => x.trim()).filter(Boolean).map((x) => { const [id, ...rest] = x.split(':'); return { id: id!.trim(), name: rest.join(':').trim() || id!.trim() }; }) }); }}>
+                    Interests
+                  </Button>
+                  {creatives[0] && copies[0] && (
+                    <Button kind="quiet" className="!px-2 !py-0.5" onClick={() => { const c = creatives[0]!; add({ type: 'add_ad', adSetId: s.id, ad: { creativeId: c.id, fileName: c.fileName ?? '', ...copies[0]! } }); }}>
+                      + ad
+                    </Button>
+                  )}
+                </div>
+                <ul className="text-ink-2">
+                  {s.ads.map((a) => (
+                    <li key={a.id} className="flex items-center gap-1">
+                      <span className="truncate flex-1">{a.name}</span>
+                      <span className="text-ink-3">{a.status}</span>
+                      <button type="button" className="text-cobalt" onClick={() => add({ type: 'ad_status', adId: a.id, status: a.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' })}>
+                        {a.status === 'ACTIVE' ? 'pause' : 'resume'}
+                      </button>
+                      {creatives[0] && copies[0] && (
+                        <button type="button" className="text-cobalt" onClick={() => { const pick = prompt(`Replace with which creative? ${creatives.map((c) => `${c.id}=${c.fileName}`).join(', ')}`); const c = creatives.find((x) => String(x.id) === pick); if (c) add({ type: 'replace_ad_creative', adId: a.id, ad: { creativeId: c.id, fileName: c.fileName ?? '', ...copies[0]! } }); }}>
+                          swap
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const c = creatives.find((x) => x.id === draft.creativeId) ?? creatives[0];
+              if (!draft.name.trim() || !c || !copies[0]) return;
+              const s = live.adSets[0];
+              add({ type: 'add_adset', adSet: { index: live.adSets.length, name: draft.name.trim(), budgetMinor: mode === 'ABO' ? (s?.dailyBudgetMinor ?? 2000) : null, interestKind: 'broad', interestLabel: null, interests: [], suggestions: [], countryOverride: null, ageBand: null, ads: [{ creativeId: c.id, fileName: c.fileName ?? '', ...copies[0] }] } });
+              setDraft({ name: '', creativeId: null });
+            }}
+          >
+            <label className="block">
+              <span className="block text-ink-2 mb-1">Add ad set</span>
+              <input className={inputClass} placeholder="US - Formal Wear" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            </label>
+            <label className="block">
+              <span className="block text-ink-2 mb-1">First ad's image</span>
+              <select className={inputClass} value={draft.creativeId ?? ''} onChange={(e) => setDraft({ ...draft, creativeId: Number(e.target.value) || null })}>
+                <option value="">First approved</option>
+                {creatives.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.fileName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="submit" disabled={!draft.name.trim() || !creatives.length}>
+              Queue ad set
+            </Button>
+          </form>
+          {changes.length > 0 && (
+            <div className="border border-line rounded-md p-2 space-y-2">
+              <p className="font-medium">Change list ({changes.length})</p>
+              <ul className="text-ink-2">
+                {changes.map((c, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="flex-1">{describeChange(c, live)}</span>
+                    <button type="button" className="text-ink-3" onClick={() => setChanges((cs) => cs.filter((_, k) => k !== i))}>
+                      remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {plan && (
+                <p className="text-ink-3">
+                  {plan.operations} operation(s) · {plan.requests} request(s) including the read
+                </p>
+              )}
+              {plan?.warnings.length ? (
+                <div className="text-amber">
+                  {plan.warnings.map((w, i) => (
+                    <p key={i}>! {w}</p>
+                  ))}
+                  <label className="flex items-center gap-1 text-ink-2 mt-1">
+                    <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} /> I understand these may restart learning
+                  </label>
+                </div>
+              ) : null}
+              <Button kind="primary" disabled={busy || running || (!!plan?.warnings.length && !ack)} onClick={() => act(() => launch.applyEdits(campaign.id, { changes, basedOn: live.readAt, acknowledgeLearning: ack }).then(() => setChanges([])), 'Applying: one batch.')}>
+                Apply {changes.length} change{changes.length === 1 ? '' : 's'}
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function describeChange(c: LiveChange, live: LiveCampaign): string {
+  const set = (id: string) => live.adSets.find((s) => s.id === id)?.name ?? id;
+  const ad = (id: string) => live.adSets.flatMap((s) => s.ads).find((a) => a.id === id)?.name ?? id;
+  switch (c.type) {
+    case 'rename_campaign': return `Rename campaign to "${c.name}"`;
+    case 'campaign_status': return `${c.status === 'ACTIVE' ? 'Resume' : 'Pause'} campaign`;
+    case 'campaign_budget': return `Campaign budget → ${formatMoney(c.dailyBudgetMinor)}/day`;
+    case 'adset_status': return `${c.status === 'ACTIVE' ? 'Resume' : 'Pause'} ${set(c.adSetId)}`;
+    case 'adset_budget': return `${set(c.adSetId)} budget → ${formatMoney(c.dailyBudgetMinor)}/day`;
+    case 'rename_adset': return `Rename ${set(c.adSetId)} to "${c.name}"`;
+    case 'adset_interests': return `${set(c.adSetId)} interests → ${c.interests.map((i) => i.name).join(', ') || 'broad'}`;
+    case 'ad_status': return `${c.status === 'ACTIVE' ? 'Resume' : 'Pause'} ad ${ad(c.adId)}`;
+    case 'add_adset': return `Add ad set "${c.adSet.name}" with ${c.adSet.ads.length} ad(s)`;
+    case 'add_ad': return `Add ad ${c.ad.fileName} to ${set(c.adSetId)}`;
+    case 'replace_ad_creative': return `Replace the creative of ${ad(c.adId)} with ${c.ad.fileName}`;
+  }
 }

@@ -67,7 +67,8 @@ export type ShopifySearchHit = Extract<AddToLineResult, { kind: 'search' }>['res
 export const ImportJobInput = z.object({ productId: z.number().int(), platform: Platform, itemId: z.string(), url: z.string(), refresh: z.boolean().default(false) });
 export type ImportJobInput = z.infer<typeof ImportJobInput>;
 
-export const PullProductInput = z.object({ productId: z.number().int().nullable(), shopifyProductId: z.string() });
+export const PullProductInput = z.object({ productId: z.number().int().nullable(), shopifyProductId: z.string().nullable().default(null), handle: z.string().nullable().default(null) });
+export const FromHandleInput = z.object({ handle: z.string().trim().min(1).max(255) });
 export type PullProductInput = z.infer<typeof PullProductInput>;
 
 /** A Shopify product read (one query). Stored on the product as `snapshot`; Shopify is the source of truth after import. */

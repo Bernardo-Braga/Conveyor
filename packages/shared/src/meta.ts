@@ -239,8 +239,80 @@ export const LaunchInput = z.object({
   templateId: z.number().int(),
   /** IDs of acknowledgeable warnings the user accepted. */
   acknowledge: z.array(z.string()).default([]),
+  /** A board-edited structure; when absent the structure is built from the template and the fill rule. */
+  structure: LaunchStructure.nullable().default(null),
 });
 export type LaunchInput = z.infer<typeof LaunchInput>;
+
+/** "Save this board as a template": a new template file with the board's shape under x_conveyor. */
+export const BoardSaveInput = z.object({ templateId: z.number().int(), name: z.string().trim().min(1).max(80), structure: LaunchStructure });
+
+/** What the importer answers (PLAN.md section 9.2). */
+export const ImportOutcome = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('imported'), format: z.enum(['template', 'graph', 'profile']), template: TemplateView, notes: z.array(z.string()) }),
+  z.object({
+    kind: z.literal('proposal'),
+    signature: z.string(),
+    mapping: z.record(z.string(), z.object({ from: z.string().nullable(), value: z.unknown().optional(), unit: z.enum(['major', 'minor']).optional() })),
+    /** The template the mapping would produce, for the user to check before confirming. */
+    preview: z.record(z.string(), z.unknown()),
+    problems: z.array(z.string()),
+    writer: z.string(),
+  }),
+  z.object({ kind: z.literal('unsupported'), message: z.string() }),
+]);
+export type ImportOutcome = z.infer<typeof ImportOutcome>;
+export const ImportConfirm = z.object({ signature: z.string(), mapping: z.record(z.string(), z.object({ from: z.string().nullable(), value: z.unknown().optional(), unit: z.enum(['major', 'minor']).optional() })), raw: z.record(z.string(), z.unknown()) });
+
+/** Live campaign state as read from Meta in one request (PLAN.md section 9.7). */
+export const LiveAd = z.object({ id: z.string(), name: z.string(), status: z.string(), creativeId: z.string().nullable() });
+export const LiveAdSet = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.string(),
+  dailyBudgetMinor: z.number().int().nullable(),
+  lifetimeBudgetMinor: z.number().int().nullable(),
+  interests: z.array(InterestRef),
+  ads: z.array(LiveAd),
+});
+export const LiveCampaign = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.string(),
+  effectiveStatus: z.string().nullable(),
+  dailyBudgetMinor: z.number().int().nullable(),
+  lifetimeBudgetMinor: z.number().int().nullable(),
+  adSets: z.array(LiveAdSet),
+  readAt: z.string(),
+});
+export type LiveCampaign = z.infer<typeof LiveCampaign>;
+
+export const LiveChange = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('rename_campaign'), name: z.string().min(1) }),
+  z.object({ type: z.literal('campaign_status'), status: z.enum(['ACTIVE', 'PAUSED']) }),
+  z.object({ type: z.literal('campaign_budget'), dailyBudgetMinor: z.number().int().positive() }),
+  z.object({ type: z.literal('adset_status'), adSetId: z.string(), status: z.enum(['ACTIVE', 'PAUSED']) }),
+  z.object({ type: z.literal('adset_budget'), adSetId: z.string(), dailyBudgetMinor: z.number().int().positive() }),
+  z.object({ type: z.literal('rename_adset'), adSetId: z.string(), name: z.string().min(1) }),
+  z.object({ type: z.literal('adset_interests'), adSetId: z.string(), interests: z.array(InterestRef) }),
+  z.object({ type: z.literal('ad_status'), adId: z.string(), status: z.enum(['ACTIVE', 'PAUSED']) }),
+  z.object({ type: z.literal('add_adset'), adSet: LaunchAdSet }),
+  z.object({ type: z.literal('add_ad'), adSetId: z.string(), ad: LaunchAd }),
+  z.object({ type: z.literal('replace_ad_creative'), adId: z.string(), ad: LaunchAd }),
+]);
+export type LiveChange = z.infer<typeof LiveChange>;
+
+export const ApplyEditsInput = z.object({
+  campaignId: z.number().int(),
+  changes: z.array(LiveChange).min(1),
+  /** The `readAt` of the state the user saw; a newer read stops the apply and shows the differences. */
+  basedOn: z.string(),
+  acknowledgeLearning: z.boolean().default(false),
+});
+export type ApplyEditsInput = z.infer<typeof ApplyEditsInput>;
+
+export const LiveDiff = z.object({ path: z.string(), before: z.unknown(), after: z.unknown() });
+export type LiveDiff = z.infer<typeof LiveDiff>;
 
 export const CampaignStatus = z.enum(['draft', 'launching', 'paused', 'active', 'failed']);
 export const AdView = z.object({ id: z.number().int(), name: z.string(), creativeId: z.number().int().nullable(), metaAdId: z.string().nullable(), metaCreativeId: z.string().nullable(), status: z.string(), insights: z.record(z.string(), z.unknown()).nullable() });

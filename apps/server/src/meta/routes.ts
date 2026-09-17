@@ -4,15 +4,17 @@ import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { InterestPick, LaunchInput, ShopifySnapshot, TemplateDuplicate, TemplateSave, type LaunchPreview } from '@conveyor/shared';
+import { ApplyEditsInput, BoardSaveInput, ImportConfirm, InterestPick, LaunchInput, ShopifySnapshot, TemplateDuplicate, TemplateSave, type ImportOutcome, type LaunchPreview } from '@conveyor/shared';
+import { applyMapping, detectFormat, fromGraphExport, getProfile, linkTemplateCopy, proposeMapping, saveProfile, shapeSignature } from './importer.ts';
 import type { AppContext } from '../context.ts';
 import { campaigns, products, templates } from '../db/schema.ts';
-import { pickInterest } from './interests.ts';
+import { findInterests, pickInterest, resolveVariantInterests } from './interests.ts';
 import { approvedCreatives, buildStructure, launchCounts } from './launch.ts';
 import { launchBlockers, preflight } from './preflight.ts';
+import { editRequestCount, learningWarnings } from './liveEdit.ts';
 import { campaignView, listCampaigns, readState } from './repo.ts';
 import { duplicateTemplate, seedTemplates, syncTemplates, templatesDir, trashTemplate, writeTemplateFile } from './templateFiles.ts';
-import { exportForOtherTool, getTemplate, listTemplates, looksLikeTemplate, parseTemplate } from './templates.ts';
+import { exportForOtherTool, getTemplate, listTemplates, parseTemplate } from './templates.ts';
 
 export function metaRoutes(ctx: AppContext) {
   const r = new Hono();
@@ -34,13 +36,62 @@ export function metaRoutes(ctx: AppContext) {
     if (!t) return c.json({ error: 'Not found' }, 404);
     return c.json({ view: listTemplates(ctx.db, defaultId()).find((x) => x.id === id), json: t });
   });
-  /** Import a file's contents: it is written into the folder and indexed. 0 requests. */
-  r.post('/templates', async (c) => {
-    const raw = await c.req.json();
-    if (!looksLikeTemplate(raw)) return c.json({ error: 'This is not a template from the other tool (no adset_variants, ads_per_adset and campaign.budget.mode). Other formats arrive in phase 7.' }, 400);
-    const t = parseTemplate(raw);
+  const finishImport = (t: Parameters<typeof writeTemplateFile>[2], format: 'template' | 'graph' | 'profile', notes: string[]): ImportOutcome => {
     const { row } = writeTemplateFile(ctx.db, ctx.dataDir, t, null, 'import');
     if (!defaultId()) ctx.settings.set('adsetup', { ...ctx.settings.get('adsetup'), defaultTemplateId: row.id });
+    const link = linkTemplateCopy(ctx.db, t);
+    if (link.linked) notes.push(`Ad copy saved on the product with handle ${link.handle}.`);
+    else if (link.handle) notes.push(`The copy belongs to the product "${link.handle}", which is not on the Line. Add it with one Shopify query from the Line.`);
+    return { kind: 'imported', format, template: listTemplates(ctx.db, defaultId()).find((x) => x.id === row.id)!, notes };
+  };
+
+  /**
+   * Import (PLAN.md section 9.2): the other tool's format is written straight to the folder; plain
+   * Meta API fields are converted; anything else gets a proposed mapping from one writer run,
+   * which becomes an import profile once confirmed, so later files of that shape cost nothing.
+   */
+  r.post('/templates', async (c) => {
+    const raw = await c.req.json();
+    const format = detectFormat(raw);
+    if (format === 'template') return c.json(finishImport(parseTemplate(raw), 'template', []), 201);
+    if (format === 'graph') {
+      const { template, notes } = fromGraphExport(raw);
+      return c.json(finishImport(template, 'graph', notes), 201);
+    }
+    const signature = shapeSignature(raw);
+    const profile = getProfile(ctx.db, signature);
+    if (profile?.confirmed) {
+      const applied = applyMapping(raw, profile.mapping as Parameters<typeof applyMapping>[1]);
+      if (applied.template) return c.json(finishImport(applied.template, 'profile', ['Mapped with a saved import profile. 0 requests.']), 201);
+    }
+    const preferred = ctx.settings.get('import').listing.writer === 'codex' ? 'codex' : 'claude_code';
+    try {
+      const dir = path.join(ctx.dataDir, 'workers', `import-${signature.slice(0, 8)}`);
+      const { mapping, notes, writer } = await proposeMapping(raw, dir, preferred, ctx.writerRun ? { run: ctx.writerRun } : {});
+      const applied = applyMapping(raw, mapping);
+      saveProfile(ctx.db, signature, mapping, false);
+      return c.json<ImportOutcome>({ kind: 'proposal', signature, mapping, preview: applied.preview, problems: [...applied.problems, ...notes], writer });
+    } catch (err) {
+      return c.json<ImportOutcome>({ kind: 'unsupported', message: `Could not work out this file's format: ${err instanceof Error ? err.message : String(err)}` });
+    }
+  });
+  /** The user confirmed (and maybe edited) a proposed mapping: saved as a profile, file written. */
+  r.post('/templates/import/confirm', async (c) => {
+    const { signature, mapping, raw } = ImportConfirm.parse(await c.req.json());
+    const applied = applyMapping(raw, mapping);
+    if (!applied.template) return c.json({ error: `The mapping does not produce a valid template: ${applied.problems.join('; ')}`, problems: applied.problems, preview: applied.preview }, 400);
+    saveProfile(ctx.db, signature, mapping, true);
+    return c.json(finishImport(applied.template, 'profile', ['Import profile saved; files of this shape now import with 0 requests.']), 201);
+  });
+  /** "Save this board as a template": a new file carrying the board under x_conveyor. */
+  r.post('/templates/board', async (c) => {
+    const { templateId, name, structure } = BoardSaveInput.parse(await c.req.json());
+    const base = getTemplate(ctx.db, templateId);
+    if (!base) return c.json({ error: 'Template not found' }, 404);
+    const variants = structure.adSets.map((s, i) => ({ ...(base.adset_variants[i] ?? { country: '', age_band: '', custom_audiences: [] }), name: s.name.replace(/^.*?\s[–-]\s/, '') || s.name, country: s.countryOverride ?? '', age_band: s.ageBand ? `${s.ageBand[0]}-${s.ageBand[1]}` : '', interests: s.interests }));
+    const extras = { ...(base.x_conveyor ?? {}), fillRule: 'manual' as const, variants: Object.fromEntries(structure.adSets.map((s, i) => [String(i), { ...(s.budgetMinor != null ? { budget: { ...base.adset.budget, daily_budget_minor: s.budgetMinor } } : {}) }])), board: { adSets: structure.adSets.map((s) => ({ name: s.name, creativeIds: s.ads.map((a) => a.creativeId) })) } };
+    const t = parseTemplate({ ...base, id: `tmpl_${Math.random().toString(16).slice(2, 10)}`, name, version: 1, adset_count: structure.adSets.length, ads_per_adset: Math.max(1, ...structure.adSets.map((s) => s.ads.length)), adset_variants: variants, x_conveyor: extras });
+    const { row } = writeTemplateFile(ctx.db, ctx.dataDir, t, null, 'board');
     return c.json(listTemplates(ctx.db, defaultId()).find((x) => x.id === row.id), 201);
   });
   /** Save from the Templates tab: validated, then written back to the same file. */
@@ -87,6 +138,21 @@ export function metaRoutes(ctx: AppContext) {
     const { labels, productId } = z.object({ labels: z.array(z.string().min(1)).min(1), productId: z.number().int().nullable().default(null) }).parse(await c.req.json());
     return c.json(ctx.worker.enqueue('find_interests', { labels, productId }, productId), 202);
   });
+  /**
+   * Resolve one ad set name (board rename): from the file or cache with 0 requests; an uncached
+   * lookup label costs one batch request, right now, because the user just asked for it.
+   */
+  r.post('/interests/resolve', async (c) => {
+    const { name, productId } = z.object({ name: z.string().min(1), productId: z.number().int().nullable().default(null) }).parse(await c.req.json());
+    const variant = { name: name.replace(/^.*?\s[–-]\s(?=.*\s[–-]\s)/, ''), country: '', age_band: '', interests: [], custom_audiences: [] };
+    let resolved = resolveVariantInterests(ctx.db, variant, ctx.settings.get('adsetup').readInterestsFromNames);
+    let requests = 0;
+    if (resolved.kind === 'lookup' && !resolved.interests.length && resolved.label) {
+      requests = (await findInterests(ctx.meta, ctx.db, [resolved.label], { productId })).requests;
+      resolved = resolveVariantInterests(ctx.db, variant, true);
+    }
+    return c.json({ ...resolved, requests });
+  });
   r.post('/interests/pick', async (c) => {
     const { label, interest } = InterestPick.parse(await c.req.json());
     pickInterest(ctx.db, label, interest);
@@ -114,11 +180,66 @@ export function metaRoutes(ctx: AppContext) {
     return c.json(preview);
   });
 
-  /** Creates everything PAUSED. */
+  /** Creates everything PAUSED. A board-edited structure may be sent along. */
   r.post('/products/:id/launch', async (c) => {
     const productId = Number(c.req.param('id'));
     const body = LaunchInput.parse({ ...((await c.req.json().catch(() => ({}))) as object), productId });
     return c.json(ctx.worker.enqueue('launch', { ...body, campaignId: null }, productId), 202);
+  });
+  /** Preview for a board-edited structure: checks and counts without launching. */
+  r.post('/products/:id/launch-preview', async (c) => {
+    const productId = Number(c.req.param('id'));
+    const body = LaunchInput.parse({ ...((await c.req.json().catch(() => ({}))) as object), productId });
+    const t = getTemplate(ctx.db, body.templateId);
+    const row = ctx.db.select().from(products).where(eq(products.id, productId)).get();
+    if (!t || !row) return c.json({ error: 'Not found' }, 404);
+    const conn = ctx.settings.get('connections').meta;
+    const setup = ctx.settings.get('adsetup');
+    const built = buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames });
+    const structure = body.structure ?? built.structure;
+    const checks = preflight({ template: t, structure, snapshot: row.snapshot ? ShopifySnapshot.parse(row.snapshot) : null, creatives: built.creativeRows, pageId: conn.pageId, pixelId: conn.pixelId, adAccountId: conn.adAccountId, tokenSet: !!(await ctx.secrets.get('meta_access_token')) });
+    const used = new Set(structure.adSets.flatMap((s) => s.ads.map((a) => a.creativeId)));
+    const uniqueCreatives = new Set(structure.adSets.flatMap((s) => s.ads.map((a) => `${a.creativeId}|${a.primaryText}|${a.headline}`))).size;
+    const newImages = built.creativeRows.filter((cr) => used.has(cr.id) && !cr.metaImageHash).length;
+    const counts = launchCounts(structure, uniqueCreatives, newImages);
+    const preview: LaunchPreview = { productId, templateId: t ? body.templateId : 0, mode: t.campaign.budget.mode, structure, operations: counts.operations, imageUploads: newImages, requests: counts.requests, checks, canLaunch: launchBlockers(checks, body.acknowledge).length === 0, notes: built.notes };
+    return c.json(preview);
+  });
+
+  // Live editing (PLAN.md section 9.7): one read, a change list, one batch.
+  r.post('/campaigns/:id/read', (c) => {
+    const id = Number(c.req.param('id'));
+    const row = ctx.db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    return c.json(ctx.worker.enqueue('read_campaign', { campaignId: id }, row.productId), 202);
+  });
+  r.get('/campaigns/:id/live', (c) => {
+    const id = Number(c.req.param('id'));
+    const row = ctx.db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    const state = readState(row);
+    return c.json({ live: state.live ?? null, diff: state.lastDiff ?? [], mode: state.mode, campaign: campaignView(ctx.db, id) });
+  });
+  r.post('/campaigns/:id/edits', async (c) => {
+    const id = Number(c.req.param('id'));
+    const row = ctx.db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    const body = ApplyEditsInput.parse({ ...((await c.req.json()) as object), campaignId: id });
+    return c.json(ctx.worker.enqueue('apply_edits', body, row.productId), 202);
+  });
+  /** Warnings and request count for a change list, before applying. Local. */
+  r.post('/campaigns/:id/edits/preview', async (c) => {
+    const id = Number(c.req.param('id'));
+    const row = ctx.db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    const state = readState(row);
+    if (!state.live) return c.json({ error: 'Read the campaign first.' }, 400);
+    const body = ApplyEditsInput.parse({ ...((await c.req.json()) as object), campaignId: id });
+    const warnings = learningWarnings(body.changes, state.live);
+    const needed = new Set(body.changes.flatMap((ch) => (ch.type === 'add_adset' ? ch.adSet.ads.map((a) => a.creativeId) : ch.type === 'add_ad' || ch.type === 'replace_ad_creative' ? [ch.ad.creativeId] : [])));
+    const newImages = approvedCreatives(ctx.db, row.productId).filter((cr) => needed.has(cr.id) && !cr.metaImageHash).length;
+    const opCount = body.changes.reduce((n, ch) => n + (ch.type === 'add_adset' ? 1 + ch.adSet.ads.length + ch.adSet.ads.length : ch.type === 'add_ad' ? 2 : 1), 0);
+    return c.json({ warnings, requests: editRequestCount(opCount, newImages), operations: opCount });
   });
 
   r.get('/products/:id/campaigns', (c) => c.json(listCampaigns(ctx.db, Number(c.req.param('id')))));

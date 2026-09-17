@@ -36,6 +36,7 @@ import type { AddToLineResult, ProductDetail, ProductView, QuotaView } from '@co
 export const line = {
   add: (text: string) => request<AddToLineResult>('/line', { method: 'POST', body: JSON.stringify({ text }) }),
   fromShopify: (shopifyProductId: string) => request<AddToLineResult>('/line/from-shopify', { method: 'POST', body: JSON.stringify({ shopifyProductId }) }),
+  fromHandle: (handle: string) => request<AddToLineResult>('/line/from-handle', { method: 'POST', body: JSON.stringify({ handle }) }),
   products: () => request<ProductView[]>('/products'),
   product: (id: number) => request<ProductDetail>(`/products/${id}`),
   refreshSupplier: (id: number) => request<JobView>(`/products/${id}/refresh-supplier`, { method: 'POST' }),
@@ -61,7 +62,7 @@ export const studio = {
 };
 
 // Phase 6: Launch
-import type { CampaignView, InterestRef, LaunchPreview, TemplateView } from '@conveyor/shared';
+import type { ApplyEditsInput, CampaignView, ImportOutcome, InterestRef, LaunchPreview, LaunchStructure, LiveCampaign, LiveDiff, TemplateView } from '@conveyor/shared';
 export interface TemplateList {
   templates: TemplateView[];
   folder: { dir: string; files: number };
@@ -73,17 +74,25 @@ export const launch = {
   saveTemplate: (id: number, json: Record<string, unknown>) => request<{ view: TemplateView; json: Record<string, unknown> }>(`/templates/${id}`, { method: 'PUT', body: JSON.stringify({ json }) }),
   duplicateTemplate: (id: number, name?: string) => request<TemplateView>(`/templates/${id}/duplicate`, { method: 'POST', body: JSON.stringify(name ? { name } : {}) }),
   deleteTemplate: (id: number) => request<{ ok: true; movedTo: string | null }>(`/templates/${id}`, { method: 'DELETE' }),
-  importTemplate: (raw: unknown) => request<TemplateView>('/templates', { method: 'POST', body: JSON.stringify(raw) }),
+  importTemplate: (raw: unknown) => request<ImportOutcome>('/templates', { method: 'POST', body: JSON.stringify(raw) }),
+  confirmImport: (body: { signature: string; mapping: Record<string, { from: string | null; value?: unknown }>; raw: Record<string, unknown> }) => request<ImportOutcome>('/templates/import/confirm', { method: 'POST', body: JSON.stringify(body) }),
+  saveBoard: (templateId: number, name: string, structure: LaunchStructure) => request<TemplateView>('/templates/board', { method: 'POST', body: JSON.stringify({ templateId, name, structure }) }),
+  previewStructure: (productId: number, templateId: number, acknowledge: string[], structure: LaunchStructure | null) => request<LaunchPreview>(`/products/${productId}/launch-preview`, { method: 'POST', body: JSON.stringify({ templateId, acknowledge, structure }) }),
+  readCampaign: (campaignId: number) => request<JobView>(`/campaigns/${campaignId}/read`, { method: 'POST' }),
+  live: (campaignId: number) => request<{ live: LiveCampaign | null; diff: LiveDiff[]; mode: 'CBO' | 'ABO'; campaign: CampaignView }>(`/campaigns/${campaignId}/live`),
+  previewEdits: (campaignId: number, body: Omit<ApplyEditsInput, 'campaignId'>) => request<{ warnings: string[]; requests: number; operations: number }>(`/campaigns/${campaignId}/edits/preview`, { method: 'POST', body: JSON.stringify(body) }),
+  applyEdits: (campaignId: number, body: Omit<ApplyEditsInput, 'campaignId'>) => request<JobView>(`/campaigns/${campaignId}/edits`, { method: 'POST', body: JSON.stringify(body) }),
   setDefaultTemplate: (id: number) => request<TemplateView[]>(`/templates/${id}/default`, { method: 'POST' }),
   exportUrl: (id: number, backup = false) => `/api/templates/${id}/export${backup ? '?backup=1' : ''}`,
   preview: (productId: number, templateId: number, acknowledge: string[]) => request<LaunchPreview>(`/products/${productId}/launch-preview?templateId=${templateId}&acknowledge=${acknowledge.join(',')}`),
-  start: (productId: number, templateId: number, acknowledge: string[]) => request<JobView>(`/products/${productId}/launch`, { method: 'POST', body: JSON.stringify({ templateId, acknowledge }) }),
+  start: (productId: number, templateId: number, acknowledge: string[], structure: LaunchStructure | null = null) => request<JobView>(`/products/${productId}/launch`, { method: 'POST', body: JSON.stringify({ templateId, acknowledge, structure }) }),
   campaigns: (productId: number) => request<CampaignView[]>(`/products/${productId}/campaigns`),
   resume: (campaignId: number) => request<JobView>(`/campaigns/${campaignId}/resume`, { method: 'POST' }),
   activate: (campaignId: number) => request<JobView>(`/campaigns/${campaignId}/activate`, { method: 'POST' }),
   pause: (campaignId: number) => request<JobView>(`/campaigns/${campaignId}/pause`, { method: 'POST' }),
   previews: (campaignId: number, format: string) => request<{ creativeId: string; html: string | null; code: number }[]>(`/campaigns/${campaignId}/previews?format=${format}`, { method: 'POST' }),
   findInterests: (labels: string[], productId: number | null) => request<JobView>('/interests/find', { method: 'POST', body: JSON.stringify({ labels, productId }) }),
+  resolveInterest: (name: string, productId: number | null) => request<{ kind: string; label: string | null; interests: InterestRef[]; suggestions: InterestRef[]; requests: number }>('/interests/resolve', { method: 'POST', body: JSON.stringify({ name, productId }) }),
   pickInterest: (label: string, interest: InterestRef) => request<{ ok: true }>('/interests/pick', { method: 'POST', body: JSON.stringify({ label, interest }) }),
   refreshInsights: () => request<JobView>('/insights/refresh', { method: 'POST' }),
 };
