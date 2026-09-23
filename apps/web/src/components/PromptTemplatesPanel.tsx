@@ -71,7 +71,7 @@ export function PromptTemplatesPanel() {
               </select>
             </Field>
           </div>
-          <Field label="Prompt" hint="Variables: built-in chips below, or your own such as {{scene}} or {{audience}}, filled per batch">
+          <Field label="Prompt" hint="Variables: built-in chips below, or your own such as {{scene}} or {{audience}}, filled per batch. Each image in a batch gets its own shot (angle and framing) from a built-in list. To choose them yourself, end the prompt with a line reading Shots: and then one shot per line.">
             <textarea className={`${inputClass} min-h-36 font-mono text-xs`} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
           </Field>
           <div className="flex flex-wrap gap-1">

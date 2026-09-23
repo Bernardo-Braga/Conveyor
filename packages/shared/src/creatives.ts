@@ -16,6 +16,15 @@ export const ASPECT_LABEL: Record<Aspect, string> = { '1:1': 'Square 1:1', '4:5'
 export const ImageEngineId = z.enum(['codex', 'openai']);
 export type ImageEngineId = z.infer<typeof ImageEngineId>;
 
+/**
+ * Where a batch's images came from: an engine, or the product's own Shopify photos. A Shopify
+ * photo is finished into the same 1:1 JPEG as a generated image, so everything downstream —
+ * approval, the launch plan, preflight, the Meta upload — treats the two the same.
+ */
+export const BatchOrigin = z.enum(['codex', 'openai', 'shopify']);
+export type BatchOrigin = z.infer<typeof BatchOrigin>;
+export const ORIGIN_LABEL: Record<BatchOrigin, string> = { codex: 'Codex', openai: 'OpenAI', shopify: 'Shopify photos' };
+
 export const CreativeStatus = z.enum(['pending', 'generating', 'finished', 'failed']);
 export type CreativeStatus = z.infer<typeof CreativeStatus>;
 export const Approval = z.enum(['pending', 'approved', 'rejected']);
@@ -45,6 +54,8 @@ export const CreativeView = z.object({
   metadataCheck: z.string().nullable(),
   flags: z.array(z.string()),
   error: z.string().nullable(),
+  /** Set once the finished file is on the Shopify product as a media item. */
+  shopifyMediaId: z.string().nullable(),
   createdAt: z.string(),
   finishedAt: z.string().nullable(),
 });
@@ -54,7 +65,7 @@ export const BatchView = z.object({
   id: z.number().int(),
   productId: z.number().int(),
   handle: z.string().nullable(),
-  engine: ImageEngineId,
+  engine: BatchOrigin,
   status: BatchStatus,
   prompt: z.string(),
   formats: z.array(Aspect),
@@ -127,5 +138,91 @@ export const DEFAULT_PROMPT_BODY = `A clean, photorealistic product photograph o
 Setting: a bright, minimal scene that suits the product, soft natural light, shallow depth of field, the product sharp and centred.
 The product fills most of the frame. One product only.`;
 
+/**
+ * One direction per image, so a batch is a set of different shots rather than one shot repeated.
+ * Image models given the same prompt twice return near-copies; only the prompt can vary them.
+ */
+export const DEFAULT_SHOTS = [
+  'Three-quarter front view at eye level, the whole product in frame and centred.',
+  'Side profile from a low camera close to the surface, the product off-centre with empty space on one side.',
+  'Seen from directly above, looking straight down.',
+  'Close-up on the material, texture and construction details; the frame may crop part of the product.',
+  'Pulled back to show more of the scene, the product smaller in the frame and in natural use.',
+  'Three-quarter view from behind, at a slight downward angle.',
+] as const;
+
+const SHOTS_HEADING = /^[ \t]*shots[ \t]*:[ \t]*$/im;
+
+/**
+ * A prompt body may end with its own shot list: a line reading "Shots:" followed by one shot per
+ * line. Those replace the defaults. The list is removed from the body that becomes the prompt.
+ */
+export function splitShots(body: string): { body: string; shots: string[] } {
+  const m = SHOTS_HEADING.exec(body);
+  if (!m) return { body, shots: [] };
+  const shots = body
+    .slice(m.index + m[0].length)
+    .split('\n')
+    .map((l) => l.replace(/^[ \t]*(?:[-*•]|\d+[.)])?[ \t]*/, '').trim())
+    .filter(Boolean);
+  return { body: body.slice(0, m.index).trimEnd(), shots };
+}
+
+/** The direction for the nth image of a format (0-based). Lists shorter than the batch repeat, and say so. */
+export function shotFor(shots: readonly string[], index: number): string {
+  const list = shots.length ? shots : DEFAULT_SHOTS;
+  const shot = list[index % list.length]!;
+  const lap = Math.floor(index / list.length);
+  return lap === 0 ? shot : `${shot} Use a different pose, distance and crop from any earlier image of this view.`;
+}
+
+/** Add finished images to the Shopify product. Empty `creativeIds` means every approved image not yet sent. */
+export const ShopifyMediaInput = z.object({ productId: z.number().int(), creativeIds: z.array(z.number().int()).default([]) });
+export type ShopifyMediaInput = z.infer<typeof ShopifyMediaInput>;
+
 export const CreativeAction = z.enum(['approve', 'reject', 'unapprove']);
 export type CreativeAction = z.infer<typeof CreativeAction>;
+
+/**
+ * Bring photos that are already on the Shopify product in as creatives, so a launch can use the
+ * store's own photography instead of only generated images. Each becomes one 1:1 finished JPEG.
+ */
+export const ImportShopifyPhotosInput = z.object({
+  productId: z.number().int(),
+  /** Shopify MediaImage IDs, in the order they take their slots. */
+  mediaIds: z.array(z.string().min(1)).min(1).max(50),
+});
+export type ImportShopifyPhotosInput = z.infer<typeof ImportShopifyPhotosInput>;
+
+/** How far from square a photo may be before the 1:1 frame visibly crops it. */
+export const SQUARE_TOLERANCE = 0.02;
+export function isSquare(width: number | null, height: number | null): boolean {
+  return !width || !height ? true : Math.abs(width / height - 1) <= SQUARE_TOLERANCE;
+}
+
+/** One photo on the Shopify product, as the picker lists it. */
+export const ShopifyPhotoView = z.object({
+  id: z.string(),
+  url: z.string(),
+  altText: z.string().nullable(),
+  width: z.number().int().nullable(),
+  height: z.number().int().nullable(),
+  /** False when the photo is not square, so the 1:1 frame will crop it. */
+  square: z.boolean(),
+  /** Set once the photo has been imported: the creative it became. */
+  creativeId: z.number().int().nullable(),
+  fileName: z.string().nullable(),
+  approval: Approval.nullable(),
+});
+export type ShopifyPhotoView = z.infer<typeof ShopifyPhotoView>;
+
+export const ShopifyPhotoList = z.object({
+  productId: z.number().int(),
+  handle: z.string().nullable(),
+  /** Null when the product has never been read back from Shopify. */
+  fetchedAt: z.string().nullable(),
+  /** The snapshot is 10 minutes old or more, so importing re-reads it (1 query). */
+  stale: z.boolean(),
+  photos: z.array(ShopifyPhotoView),
+});
+export type ShopifyPhotoList = z.infer<typeof ShopifyPhotoList>;

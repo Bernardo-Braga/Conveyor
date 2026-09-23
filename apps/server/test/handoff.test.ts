@@ -79,11 +79,11 @@ describe('lessons from the other tool', () => {
     t.adset.promoted_object.pixel_id = null;
     const structure = { campaignName: 'c', adSets: [set(0, 'a', { ads: [ad] })] };
     const snapshot = { id: 'gid://shopify/Product/1', handle: 'x', title: 'x', status: 'ACTIVE', descriptionHtml: '', productType: '', tags: [], vendor: '', onlineStoreUrl: 'https://x/products/x', featuredImage: null, images: [], options: [], variants: [], currency: 'USD', updatedAt: 'u', fetchedAt: 'f' };
-    const checks = preflight({ template: t, structure, snapshot, creatives: [{ id: 1, metadataCheck: 'clean', approval: 'approved', status: 'finished' }], pageId: '1', pixelId: '', adAccountId: 'act_1', tokenSet: true });
+    const checks = preflight({ template: t, structure, snapshot, snapshotFresh: true, creatives: [{ id: 1, metadataCheck: 'clean', approval: 'approved', status: 'finished' }], pageId: '1', pixelId: '', adAccountId: 'act_1', tokenSet: true });
     expect(checks.find((c) => c.id === 'pixel_missing')?.level).toBe('block');
     t.adset.billing_event = 'LINK_CLICKS';
     t.campaign.special_ad_categories = ['HOUSING'];
-    const c2 = preflight({ template: t, structure, snapshot, creatives: [{ id: 1, metadataCheck: 'clean', approval: 'approved', status: 'finished' }], pageId: '1', pixelId: '138', adAccountId: 'act_1', tokenSet: true });
+    const c2 = preflight({ template: t, structure, snapshot, snapshotFresh: true, creatives: [{ id: 1, metadataCheck: 'clean', approval: 'approved', status: 'finished' }], pageId: '1', pixelId: '138', adAccountId: 'act_1', tokenSet: true });
     expect(c2.find((c) => c.id === 'pixel_missing')).toBeUndefined();
     expect(c2.find((c) => c.id === 'billing_event')?.level).toBe('warn');
     expect(c2.find((c) => c.id === 'special_ad_categories')?.level).toBe('info');

@@ -5,7 +5,7 @@ import { ListingWire, listingJsonSchema, type SourceProduct } from '@conveyor/sh
 import { childEnv, keyVarsInEnvironment, looksLikeUsageLimit, runListingWriter, makeWriters, WriterError } from '../src/listing/writers/index.ts';
 import { claudeCodeArgs } from '../src/listing/writers/claudeCode.ts';
 import { codexArgs } from '../src/listing/writers/codex.ts';
-import { listingPrompt } from '../src/listing/prompt.ts';
+import { HISTORY_TITLES, historyNote, listingPrompt } from '../src/listing/prompt.ts';
 import { ensurePhotos } from '../src/listing/photos.ts';
 import { mapAliexpress } from '../src/suppliers/mapAliexpress.ts';
 import { claudeAuthOk, claudeResult, fakeCli, fixture, testContext, type CliCall } from './helpers.ts';
@@ -14,8 +14,8 @@ const source = (): SourceProduct => mapAliexpress(fixture('rapidapi/aliexpress-i
 const WIRE = JSON.parse((fixture('claude/listing-response.json') as { content: { text: string }[] }).content[0]!.text) as unknown;
 const isAuth = (c: CliCall) => c.args[0] === 'auth';
 
-function req(dir: string, photos: string[] = ['photo-0.jpg']) {
-  return { dir, source: source(), brandVoice: 'Warm and plain.', photos, productId: 1, jobId: 1 };
+function req(dir: string, photos: string[] = ['photo-0.jpg'], focus = '') {
+  return { dir, source: source(), brandVoice: 'Warm and plain.', instructions: '', focus, recentTitles: [], photos, productId: 1, jobId: 1 };
 }
 
 describe('childEnv', () => {
@@ -33,6 +33,13 @@ describe('the JSON schema handed to the CLIs', () => {
     expect(Object.keys(schema.properties).sort()).toEqual(Object.keys(ListingWire.shape).sort());
     expect(schema.required).toContain('needsCheck');
   });
+
+  it('names no dialect: Claude Code 2.1.274 rejects a "$schema" it cannot resolve', () => {
+    const text = JSON.stringify(listingJsonSchema());
+    expect(text).not.toContain('$schema');
+    expect(text).not.toContain('$ref');
+    expect(text).not.toContain('$defs');
+  });
 });
 
 describe('listingPrompt', () => {
@@ -44,7 +51,58 @@ describe('listingPrompt', () => {
     expect(p).not.toContain('storeTitle');
     expect(p).not.toContain('sellerId');
     expect(listingPrompt(source(), '', [])).toContain('No photos are available');
-    expect(listingPrompt(source(), '', [], 'title: too long')).toContain('title: too long');
+    expect(listingPrompt(source(), '', [], { repairNote: 'title: too long' })).toContain('title: too long');
+  });
+
+  it('carries this product\'s focus, under the rule that it may not invent a fact to fit it', () => {
+    const p = listingPrompt(source(), '', [], { focus: 'The full-grain leather, for commuters' });
+    expect(p).toContain('Focus for this listing: The full-grain leather, for commuters');
+    expect(p).toContain('Never invent a fact to fit the focus.');
+    expect(p.indexOf('Focus for this listing')).toBeLessThan(p.indexOf('Supplier data'));
+    expect(listingPrompt(source(), '', [], { focus: '   ' })).not.toContain('Focus for this listing');
+  });
+});
+
+describe('the titles already used', () => {
+  it('are listed newest first, with the rule that a name is not used twice', () => {
+    const p = listingPrompt(source(), '', [], { recentTitles: ['Ashworth leather loafer', 'Whitcombe desk lamp'] });
+    expect(p).toContain('Titles this store has already published, newest first:');
+    expect(p.indexOf('- Ashworth leather loafer')).toBeLessThan(p.indexOf('- Whitcombe desk lamp'));
+    expect(p).toContain('Do not reuse one of these titles');
+    expect(p.indexOf('Titles this store has already published')).toBeLessThan(p.indexOf('Supplier data'));
+  });
+
+  it('drops blanks and repeats, whatever their casing, and caps the list', () => {
+    const note = historyNote(['Ashworth loafer', '  ', 'ASHWORTH LOAFER', 'Whitcombe lamp'])!;
+    expect(note.match(/^- /gm)).toHaveLength(2);
+    const many = historyNote(Array.from({ length: HISTORY_TITLES + 15 }, (_, i) => `Title ${i}`))!;
+    expect(many.match(/^- /gm)).toHaveLength(HISTORY_TITLES);
+  });
+
+  it('says nothing at all when the store has published nothing yet', () => {
+    expect(historyNote([])).toBeNull();
+    expect(historyNote(['  '])).toBeNull();
+    expect(listingPrompt(source(), '', [])).not.toContain('already published');
+  });
+});
+
+describe('the store\'s additional instructions', () => {
+  it('ride alongside the voice as rules, under the same hard limits', () => {
+    const p = listingPrompt(source(), 'Warm and plain.', [], { instructions: 'Never use the word premium.' });
+    expect(p).toContain('Never use the word premium.');
+    expect(p).toContain('Treat them as rules, not suggestions');
+    expect(p).toContain('Warm and plain.');
+    expect(listingPrompt(source(), '', [], { instructions: '  ' })).not.toContain('Treat them as rules');
+  });
+});
+
+describe('the store\'s writing instructions', () => {
+  it('take precedence over the style rules, but never over the hard limits', () => {
+    const prompt = listingPrompt(source(), 'Titles follow "Name | Material Type".', []);
+    expect(prompt).toContain('Titles follow "Name | Material Type".');
+    expect(prompt).toContain('Where they differ from the style rules above, follow them.');
+    expect(prompt).toContain('never override the character limits');
+    expect(listingPrompt(source(), '  ', [])).toContain('Brand voice: plain, warm and specific.');
   });
 });
 

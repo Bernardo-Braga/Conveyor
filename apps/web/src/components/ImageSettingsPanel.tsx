@@ -60,6 +60,10 @@ export function ImageSettingsPanel() {
           <input type="checkbox" checked={s.finished.exiftoolCheck} onChange={(e) => setS({ ...s, finished: { ...s.finished, exiftoolCheck: e.target.checked } })} />
           Check every finished file with exiftool when installed
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={s.shopify.addApproved} onChange={(e) => setS({ ...s, shopify: { ...s.shopify, addApproved: e.target.checked } })} />
+          Also add approved images to the Shopify product (2 Shopify requests plus one upload per approval; off means Meta only, with the Studio button to send by hand)
+        </label>
       </div>
       {msg && <p className="text-xs text-ink-3 mt-3">{msg}</p>}
     </Panel>

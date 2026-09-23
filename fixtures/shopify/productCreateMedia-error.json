@@ -1,0 +1,1 @@
+{ "data": { "productCreateMedia": { "media": [], "mediaUserErrors": [ { "code": "MEDIA_CANNOT_BE_MODIFIED", "field": ["media", "0", "originalSource"], "message": "Media cannot be modified. It is currently being processed." } ] } } }

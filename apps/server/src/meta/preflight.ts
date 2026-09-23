@@ -4,6 +4,8 @@ export interface PreflightInput {
   template: Template;
   structure: LaunchStructure;
   snapshot: ShopifySnapshot | null;
+  /** False when the snapshot is 10 minutes old or more; a stale one only warns, because launch re-reads it first. */
+  snapshotFresh: boolean;
   creatives: { id: number; metadataCheck: string | null; approval: string; status: string }[];
   pageId: string;
   pixelId: string;
@@ -48,10 +50,11 @@ export function preflight(i: PreflightInput): PreflightCheck[] {
   if (!i.structure.adSets.length) add('no_adsets', 'block', 'The structure has no ad sets.');
 
   if (!i.snapshot) add('product_state', 'block', 'No Shopify snapshot for this product.');
-  else {
-    if (i.snapshot.status !== 'ACTIVE') add('product_state', 'block', `The Shopify product is ${i.snapshot.status}, not active. Set it active and published in Shopify first.`);
-    else if (!i.snapshot.onlineStoreUrl) add('product_published', 'warn', 'The product has no online store URL yet; it may not be published to the Online Store channel.', true);
-  }
+  else if (i.snapshot.status !== 'ACTIVE') {
+    const state = `The Shopify product is ${i.snapshot.status}, not active.`;
+    if (i.snapshotFresh) add('product_state', 'block', `${state} Set it active and published in Shopify first.`);
+    else add('product_state', 'warn', `${state} That read is from ${i.snapshot.fetchedAt}, over 10 minutes old, so it may be out of date. Re-read it from Shopify, or launch and it will be read again first.`);
+  } else if (!i.snapshot.onlineStoreUrl) add('product_published', 'warn', 'The product has no online store URL yet; it may not be published to the Online Store channel.', true);
 
   const used = new Set(i.structure.adSets.flatMap((s) => s.ads.map((a) => a.creativeId)));
   const dirty = i.creatives.filter((c) => used.has(c.id) && !(c.metadataCheck ?? '').startsWith('clean'));

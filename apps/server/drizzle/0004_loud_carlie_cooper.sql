@@ -1,0 +1,1 @@
+ALTER TABLE `creatives` ADD `shopify_media_id` text;

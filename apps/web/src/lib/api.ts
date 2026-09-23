@@ -34,13 +34,16 @@ export const api = {
 // Phase 2: the Line
 import type { AddToLineResult, ProductDetail, ProductView, QuotaView } from '@conveyor/shared';
 export const line = {
-  add: (text: string) => request<AddToLineResult>('/line', { method: 'POST', body: JSON.stringify({ text }) }),
+  /** The input bar: a link or a name, plus this product's own focus for the listing. */
+  add: (text: string, focus = '') => request<AddToLineResult>('/line', { method: 'POST', body: JSON.stringify({ text, focus }) }),
   fromShopify: (shopifyProductId: string) => request<AddToLineResult>('/line/from-shopify', { method: 'POST', body: JSON.stringify({ shopifyProductId }) }),
   fromHandle: (handle: string) => request<AddToLineResult>('/line/from-handle', { method: 'POST', body: JSON.stringify({ handle }) }),
   products: () => request<ProductView[]>('/products'),
   product: (id: number) => request<ProductDetail>(`/products/${id}`),
   refreshSupplier: (id: number) => request<JobView>(`/products/${id}/refresh-supplier`, { method: 'POST' }),
+  refreshShopify: (id: number) => request<JobView>(`/products/${id}/refresh-shopify`, { method: 'POST' }),
   retry: (id: number) => request<JobView>(`/products/${id}/retry`, { method: 'POST' }),
+  setFocus: (id: number, focus: string) => request<ProductDetail>(`/products/${id}/focus`, { method: 'PUT', body: JSON.stringify({ focus }) }),
   remove: (id: number) => request<{ ok: true }>(`/products/${id}`, { method: 'DELETE' }),
   quota: () => request<QuotaView[]>('/quota'),
 };
@@ -49,11 +52,14 @@ export const listing = {
 };
 
 // Phase 4: the Studio
-import type { BatchView, CreativeView, GenerateBatchInput, PromptTemplateInput, PromptTemplateView } from '@conveyor/shared';
+import type { BatchView, CreativeView, GenerateBatchInput, PromptTemplateInput, PromptTemplateView, ShopifyPhotoList } from '@conveyor/shared';
 export const studio = {
   generate: (productId: number, body: Partial<GenerateBatchInput> = {}) => request<JobView>(`/products/${productId}/generate`, { method: 'POST', body: JSON.stringify(body) }),
   batches: (productId: number) => request<BatchView[]>(`/products/${productId}/batches`),
   act: (creativeId: number, action: 'approve' | 'reject' | 'unapprove') => request<CreativeView>(`/creatives/${creativeId}/${action}`, { method: 'POST' }),
+  toShopify: (productId: number, creativeIds: number[] = []) => request<JobView>(`/products/${productId}/shopify-media`, { method: 'POST', body: JSON.stringify({ creativeIds }) }),
+  shopifyPhotos: (productId: number) => request<ShopifyPhotoList>(`/products/${productId}/shopify-photos`),
+  importShopifyPhotos: (productId: number, mediaIds: string[]) => request<JobView>(`/products/${productId}/shopify-photos/import`, { method: 'POST', body: JSON.stringify({ mediaIds }) }),
   regenerate: (creativeId: number, instruction: string | null = null) => request<JobView>(`/creatives/${creativeId}/regenerate`, { method: 'POST', body: JSON.stringify({ instruction }) }),
   templates: () => request<PromptTemplateView[]>('/prompt-templates'),
   createTemplate: (body: PromptTemplateInput) => request<PromptTemplateView>('/prompt-templates', { method: 'POST', body: JSON.stringify(body) }),
@@ -62,7 +68,7 @@ export const studio = {
 };
 
 // Phase 6: Launch
-import type { ApplyEditsInput, CampaignView, ImportOutcome, InterestRef, LaunchPreview, LaunchStructure, LiveCampaign, LiveDiff, TemplateView } from '@conveyor/shared';
+import type { ApplyEditsInput, CampaignView, ImportOutcome, InterestRef, LaunchOverrides, LaunchPlanView, LaunchPreview, LaunchStructure, LiveCampaign, LiveDiff, TemplateView } from '@conveyor/shared';
 export interface TemplateList {
   templates: TemplateView[];
   folder: { dir: string; files: number };
@@ -85,6 +91,10 @@ export const launch = {
   applyEdits: (campaignId: number, body: Omit<ApplyEditsInput, 'campaignId'>) => request<JobView>(`/campaigns/${campaignId}/edits`, { method: 'POST', body: JSON.stringify(body) }),
   setDefaultTemplate: (id: number) => request<TemplateView[]>(`/templates/${id}/default`, { method: 'POST' }),
   exportUrl: (id: number, backup = false) => `/api/templates/${id}/export${backup ? '?backup=1' : ''}`,
+  plan: (productId: number, templateId: number) => request<LaunchPlanView>(`/products/${productId}/launch-plan?templateId=${templateId}`),
+  savePlan: (productId: number, body: { templateId: number; template?: Record<string, unknown> | null; creativeIds?: number[] | null; overrides?: LaunchOverrides | null }) =>
+    request<{ ok: true; creativeIds: number[] }>(`/products/${productId}/launch-plan`, { method: 'PUT', body: JSON.stringify(body) }),
+  resetPlan: (productId: number) => request<{ ok: true }>(`/products/${productId}/launch-plan`, { method: 'DELETE' }),
   preview: (productId: number, templateId: number, acknowledge: string[]) => request<LaunchPreview>(`/products/${productId}/launch-preview?templateId=${templateId}&acknowledge=${acknowledge.join(',')}`),
   start: (productId: number, templateId: number, acknowledge: string[], structure: LaunchStructure | null = null) => request<JobView>(`/products/${productId}/launch`, { method: 'POST', body: JSON.stringify({ templateId, acknowledge, structure }) }),
   campaigns: (productId: number) => request<CampaignView[]>(`/products/${productId}/campaigns`),

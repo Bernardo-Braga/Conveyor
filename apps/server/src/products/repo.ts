@@ -1,5 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
-import { ListingDraft, ProductDetail, ProductView, SourceProduct, type JobError, type Pricing, type ProductState } from '@conveyor/shared';
+import { HISTORY_TITLES, ListingDraft, ProductDetail, ProductView, SourceProduct, type JobError, type Pricing, type ProductState } from '@conveyor/shared';
 import type { Db } from '../db/index.ts';
 import { products, supplierRaw } from '../db/schema.ts';
 import { thumbnailUrl } from '../suppliers/cleanImages.ts';
@@ -29,6 +29,7 @@ export function toProductView(row: Row): ProductView {
     shopifyHandle: row.shopifyHandle,
     snapshotAt: row.snapshotAt,
     failure: (row.failure as JobError | null) ?? null,
+    focus: row.focus,
     listing: listingSummary(row),
     adminUrl: row.shopifyProductId ? adminUrlFor(row.shopifyProductId) : null,
     createdAt: row.createdAt,
@@ -38,6 +39,30 @@ export function toProductView(row: Row): ProductView {
 
 export function listProducts(db: Db): ProductView[] {
   return db.select().from(products).orderBy(desc(products.id)).all().map(toProductView);
+}
+
+/**
+ * Titles this store has already used, newest first, for the history block in the writer's prompt.
+ * A product's own title is left out so a rewrite is free to keep the name it already has. Reads
+ * the draft first: a listing that was written but never reached Shopify still counts as used.
+ */
+export function recentTitles(db: Db, opts: { exclude?: number | null; limit?: number } = {}): string[] {
+  const limit = opts.limit ?? HISTORY_TITLES;
+  const rows = db
+    .select({ id: products.id, title: products.title, listingDraft: products.listingDraft })
+    .from(products)
+    .orderBy(desc(products.id))
+    .limit(limit * 2)
+    .all();
+  const titles: string[] = [];
+  for (const row of rows) {
+    if (opts.exclude != null && row.id === opts.exclude) continue;
+    const draft = row.listingDraft ? ListingDraft.safeParse(row.listingDraft) : null;
+    const title = (draft?.success ? draft.data.title : null) ?? row.title;
+    if (title?.trim()) titles.push(title.trim());
+    if (titles.length >= limit) break;
+  }
+  return titles;
 }
 
 export function getProduct(db: Db, id: number): Row | null {

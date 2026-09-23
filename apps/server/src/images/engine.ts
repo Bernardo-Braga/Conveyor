@@ -6,6 +6,8 @@ export interface EngineSlot {
   aspect: Aspect;
   /** Product-wide number per aspect, also the file suffix. */
   slot: number;
+  /** What makes this image different from the others in its batch: angle, framing, pose. */
+  direction?: string;
 }
 
 export interface EngineRequest {

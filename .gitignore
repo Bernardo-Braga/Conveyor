@@ -8,3 +8,20 @@ apps/server/data/
 .env.*
 coverage/
 *.log
+output/
+
+# Local databases, keys and credentials
+*.sqlite
+*.sqlite3
+*.db
+*.pem
+*.key
+*.p12
+.envrc
+.claude/settings.local.json
+
+# Stray writer output from a smoke run in the repo root
+/listing-reply.json
+
+# Personal launcher
+/start.sh

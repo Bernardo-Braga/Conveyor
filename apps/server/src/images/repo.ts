@@ -26,6 +26,7 @@ export function toCreativeView(r: CreativeRow): CreativeView {
     metadataCheck: r.metadataCheck,
     flags: (r.flags as string[] | null) ?? [],
     error: r.error,
+    shopifyMediaId: r.shopifyMediaId,
     createdAt: r.createdAt,
     finishedAt: r.finishedAt,
   });

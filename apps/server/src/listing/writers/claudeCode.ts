@@ -75,7 +75,7 @@ export function claudeCodeWriter(opts: ClaudeCodeOptions = {}): ListingWriter {
       let cost = 0;
       let lastProblem = '';
       for (let attempt = 1; attempt <= 2; attempt++) {
-        const prompt = listingPrompt(req.source, req.brandVoice, req.photos, attempt === 1 ? req.repairNote : lastProblem || req.repairNote);
+        const prompt = listingPrompt(req.source, req.brandVoice, req.photos, { focus: req.focus, instructions: req.instructions, recentTitles: req.recentTitles, repairNote: (attempt === 1 ? req.repairNote : lastProblem || req.repairNote) ?? '' });
         const res = await run('claude', claudeCodeArgs(prompt, listingJsonSchemaString()), { cwd: req.dir, env: childEnv(baseEnv), timeoutMs });
         if (res.timedOut) throw new WriterError(`Claude Code did not finish within ${Math.round(timeoutMs / 1000)}s.`, 'claude_code', false, true);
 

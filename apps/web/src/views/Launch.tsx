@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CampaignView, CreativeView, LaunchAdSet, LaunchPreview, LaunchStructure, LiveCampaign, LiveChange, LiveDiff, ProductView, TemplateView } from '@conveyor/shared';
+import { NO_OVERRIDES, overriddenFields, type CampaignView, type CreativeView, type LaunchAdSet, type LaunchOverrides, type LaunchPlanView, type LaunchPreview, type LaunchStructure, type LiveCampaign, type LiveChange, type LiveDiff, type ProductView, type TemplateView } from '@conveyor/shared';
 import { Board } from '../components/Board.tsx';
+import { ClearLaunchSettings, LaunchSettings, LaunchSettingsSummary } from '../components/LaunchSettings.tsx';
 import { Badge, Button, Panel, inputClass } from '../components/Panel.tsx';
+import { ShopifyPhotoPicker } from '../components/ShopifyPhotoPicker.tsx';
+import { TemplateEditor, type Json } from '../components/TemplateEditor.tsx';
 import { ApiError, launch, line, studio } from '../lib/api.ts';
 import type { LiveState } from '../lib/events.ts';
 import { formatDateTime, formatMoney, sentence } from '../lib/format.ts';
+
+/** What the current fill rule does with the chosen images, in the same words the template uses. */
+const FILL_RULE_COPY: Record<string, string> = {
+  one_per_ad: 'Every ad set gets the same images, one per ad.',
+  rotate: 'The images are spread across every ad slot in turn.',
+  one_per_adset: 'Each ad set gets one image.',
+  by_format: '9:16 images go to Reels and Stories ad sets, the rest elsewhere.',
+  manual: 'The ad slots are left for you to fill on the board.',
+};
 
 const LAUNCH_STATES = new Set<ProductView['state']>(['ready_to_launch', 'review', 'paused_in_meta', 'live', 'needs_attention']);
 
@@ -28,6 +40,11 @@ export function LaunchView({ live }: { live: LiveState }) {
   const [creatives, setCreatives] = useState<CreativeView[]>([]);
   const [saveName, setSaveName] = useState('');
   const [targetingChecks, setTargetingChecks] = useState<{ adSet: string; ok: boolean; message: string | null; estimate: { users_lower?: number; users_upper?: number } | null }[] | null>(null);
+  const [plan, setPlan] = useState<LaunchPlanView | null>(null);
+  const [planDoc, setPlanDoc] = useState<Json | null>(null);
+  const [planDirty, setPlanDirty] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+  const [fromShopify, setFromShopify] = useState(false);
 
   const loadTemplates = useCallback(
     () =>
@@ -50,22 +67,35 @@ export function LaunchView({ live }: { live: LiveState }) {
     if (productId == null) return;
     await launch.campaigns(productId).then(setCampaigns).catch(() => undefined);
     if (templateId != null) {
+      await launch.plan(productId, templateId).then((p) => {
+        setPlan(p);
+        // A refresh never throws away edits that have not been saved yet.
+        setPlanDoc((cur) => (planDirty && cur ? cur : (p.template as Json)));
+      }).catch(() => undefined);
       const req = board ? launch.previewStructure(productId, templateId, acknowledged, board) : launch.preview(productId, templateId, acknowledged);
       await req.then(setPreview).catch((e) => setNotice(e instanceof ApiError ? e.message : 'Could not build the preview.'));
     }
     await studio.batches(productId).then((bs) => setCreatives(bs.flatMap((b) => b.creatives).filter((c) => c.status === 'finished' && c.approval === 'approved'))).catch(() => undefined);
-  }, [productId, templateId, acknowledged, board]);
-  useEffect(() => setBoard(null), [productId, templateId]);
+  }, [productId, templateId, acknowledged, board, planDirty]);
+  useEffect(() => {
+    setBoard(null);
+    setPlanDirty(false);
+    setPlanDoc(null);
+  }, [productId, templateId]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
-  const jobKey = [...live.jobs.values()].filter((j) => ['launch', 'activate_campaign', 'find_interests', 'pull_insights'].includes(j.type)).map((j) => `${j.id}:${j.status}`).join(',');
+  const jobKey = [...live.jobs.values()].filter((j) => ['launch', 'activate_campaign', 'find_interests', 'pull_insights', 'pull_product', 'import_shopify_photos'].includes(j.type)).map((j) => `${j.id}:${j.status}`).join(',');
   useEffect(() => {
     void refresh();
   }, [jobKey, refresh]);
 
   const running = [...live.jobs.values()].find((j) => (j.type === 'launch' || j.type === 'activate_campaign') && j.productId === productId && (j.status === 'running' || j.status === 'queued'));
   const product = products.find((p) => p.id === productId) ?? null;
+  // The budget box in step 3 is labelled from the template: whose budget it is, and per day or lifetime.
+  const templateDoc = plan?.template as { campaign?: { budget?: { mode?: string; lifetime_budget_minor?: number | null } }; adset?: { budget?: { lifetime_budget_minor?: number | null } } } | undefined;
+  const templateMode = preview?.mode ?? (templateDoc?.campaign?.budget?.mode === 'ABO' ? 'ABO' : 'CBO');
+  const templateLifetime = templateMode === 'CBO' ? templateDoc?.campaign?.budget?.lifetime_budget_minor != null : templateDoc?.adset?.budget?.lifetime_budget_minor != null;
   const blockers = useMemo(() => preview?.checks.filter((c) => c.level === 'block') ?? [], [preview]);
   const warnings = useMemo(() => preview?.checks.filter((c) => c.level === 'warn') ?? [], [preview]);
   const infos = useMemo(() => preview?.checks.filter((c) => c.level === 'info') ?? [], [preview]);
@@ -86,10 +116,33 @@ export function LaunchView({ live }: { live: LiveState }) {
 
   const unmatched = preview?.structure.adSets.filter((s) => s.interestKind === 'unmatched' && s.suggestions.length) ?? [];
 
+  /** Choosing a creative is saved at once, so what the grid shows is what the launch sends. */
+  const toggleCreative = (creativeId: number) => {
+    if (productId == null || templateId == null || !plan) return;
+    const next = plan.creativeIds.includes(creativeId) ? plan.creativeIds.filter((x) => x !== creativeId) : [...plan.creativeIds, creativeId];
+    void act(() => launch.savePlan(productId, { templateId, creativeIds: next }));
+  };
+  const chooseCreatives = (ids: number[]) => {
+    if (productId == null || templateId == null) return;
+    void act(() => launch.savePlan(productId, { templateId, creativeIds: ids }));
+  };
+  /** The launch settings save as soon as a box is left, so the preview below always matches. */
+  const saveOverrides = (next: LaunchOverrides) => {
+    if (productId == null || templateId == null) return;
+    void act(() => launch.savePlan(productId, { templateId, overrides: next }));
+  };
+  const savePlanTemplate = () => {
+    if (productId == null || templateId == null || !planDoc) return;
+    void act(async () => {
+      await launch.savePlan(productId, { templateId, template: planDoc });
+      setPlanDirty(false);
+    }, 'Saved for this product. The template file is unchanged.');
+  };
+
   return (
     <div className="space-y-6">
       <Panel
-        title="New campaign"
+        title="1 · Product and template"
         action={
           <a className="text-xs text-cobalt" href="#Templates">
             Manage templates
@@ -138,13 +191,148 @@ export function LaunchView({ live }: { live: LiveState }) {
         {notice && <p className="text-sm text-ink-2 mt-3">{notice}</p>}
       </Panel>
 
+      {plan && product && (
+        <Panel
+          title="2 · Creatives"
+          action={
+            <span className="flex items-center gap-2 text-xs text-ink-3">
+              <span className="tabular-nums">
+                {plan.creativeIds.length} chosen · {plan.slots} fill{plan.slots === 1 ? 's' : ''} the ads
+              </span>
+              <Button kind="quiet" disabled={busy} onClick={() => chooseCreatives(plan.creatives.filter((c) => c.approval === 'approved').map((c) => c.id))}>
+                Choose every approved
+              </Button>
+              <Button kind="quiet" disabled={busy || !plan.creativeIds.length} onClick={() => chooseCreatives([])}>
+                Clear
+              </Button>
+              <Button kind="quiet" disabled={busy} onClick={() => setFromShopify((v) => !v)}>
+                {fromShopify ? 'Hide Shopify photos' : 'Add from Shopify'}
+              </Button>
+            </span>
+          }
+        >
+          {fromShopify && (
+            <div className="mb-4 pb-4 border-b border-line">
+              <ShopifyPhotoPicker productId={product.id} busy={busy} onDone={refresh} />
+            </div>
+          )}
+          {plan.creatives.length === 0 && !fromShopify && (
+            <p className="text-sm text-ink-3">No finished images for this product yet. Generate a batch in the Studio, or use "Add from Shopify" to launch with the product's own photos.</p>
+          )}
+          {plan.creatives.length > 0 && (
+            <>
+              <p className="text-xs text-ink-3 mb-3">
+                These go to Meta, in this order. {FILL_RULE_COPY[plan.fillRule]} Click to choose or drop one; choosing an image approves it.
+              </p>
+              <ul className="grid gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
+                {plan.creatives.map((c) => {
+                  const order = plan.creativeIds.indexOf(c.id);
+                  const chosen = order >= 0;
+                  return (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => toggleCreative(c.id)}
+                        className={`block w-full text-left rounded-md overflow-hidden border-2 transition ${chosen ? 'border-cobalt' : 'border-line opacity-70 hover:opacity-100'}`}
+                      >
+                        <span className="relative block aspect-square bg-panel-2">
+                          {c.finishedUrl && <img src={c.finishedUrl} alt={c.fileName ?? ''} className="w-full h-full object-cover" loading="lazy" />}
+                          <span className={`absolute top-1 left-1 w-5 h-5 rounded-full text-xs font-medium flex items-center justify-center tabular-nums ${chosen ? 'bg-cobalt text-cobalt-ink' : 'bg-panel text-ink-3 border border-line'}`}>{chosen ? order + 1 : ''}</span>
+                          {order >= plan.slots && chosen && <span className="absolute top-1 right-1 text-[10px] px-1 rounded bg-amber-soft text-amber">spare</span>}
+                        </span>
+                        <span className="block px-1.5 py-1 text-[11px] text-ink-3 truncate">
+                          {c.aspect} · {c.approval === 'approved' ? 'approved' : sentence(c.approval)}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {plan.creativeIds.length < plan.slots && (
+                <p className="text-sm text-amber mt-3">
+                  {plan.creativeIds.length} chosen where {plan.slots} are needed. Each ad set gets as many as there are, so some ads will be missing. Choose more, or lower the ads per ad set in step 4.
+                </p>
+              )}
+            </>
+          )}
+        </Panel>
+      )}
+
+      {plan && product && (
+        <Panel
+          title="3 · This launch"
+          action={
+            <span className="flex items-center gap-2">
+              <LaunchSettingsSummary changed={overriddenFields(plan.overrides)} />
+              <ClearLaunchSettings disabled={busy || !overriddenFields(plan.overrides).length} onClear={() => saveOverrides(NO_OVERRIDES)} />
+            </span>
+          }
+        >
+          <p className="text-xs text-ink-3 mb-3">
+            The few things that change every time. An empty box follows {plan.templateName}; what you type here belongs to this product and never reaches the template file.
+          </p>
+          <LaunchSettings overrides={plan.overrides} defaults={plan.defaults} mode={templateMode} lifetime={templateLifetime} busy={busy} onSave={saveOverrides} />
+        </Panel>
+      )}
+
+      {plan && planDoc && product && (
+        <Panel
+          title="4 · Everything else in the template"
+          action={
+            <span className="flex items-center gap-2">
+              {planDirty && <Badge tone="amber">Unsaved</Badge>}
+              {plan.edited && !planDirty && <Badge tone="cobalt">Edited for this product</Badge>}
+              <Button kind="quiet" onClick={() => setShowEditor((v) => !v)}>
+                {showEditor ? 'Hide' : 'Edit'}
+              </Button>
+              {showEditor && (
+                <>
+                  <Button kind="quiet" disabled={busy || !plan.edited} onClick={() => act(async () => { await launch.resetPlan(product.id); setPlanDirty(false); setPlanDoc(null); }, 'Back to the template as it is in the folder.')}>
+                    Start again from the template
+                  </Button>
+                  <Button kind="quiet" disabled={busy || !planDoc} onClick={() => act(() => launch.saveTemplate(plan.templateId, planDoc), 'Written back to the template file, for every product.')}>
+                    Save to the template file
+                  </Button>
+                  <Button kind="primary" disabled={busy || !planDirty} onClick={savePlanTemplate}>
+                    Save for this product
+                  </Button>
+                </>
+              )}
+            </span>
+          }
+        >
+          {!showEditor && (
+            <p className="text-sm text-ink-2">
+              {plan.templateName}: {preview?.mode ?? ''} · {preview?.structure.adSets.length ?? plan.template.adset_count as number} ad sets × {String(plan.template.ads_per_adset)} ads.{' '}
+              {plan.edited ? 'Edited for this product; the template file is untouched.' : 'Straight from the template file.'} Open it to go over every setting before launching.
+            </p>
+          )}
+          {showEditor && (
+            <TemplateEditor
+              doc={planDoc}
+              onChange={(next) => {
+                setPlanDoc(next);
+                setPlanDirty(true);
+              }}
+              note={
+                <p className="text-xs text-ink-3 mb-3">
+                  Changes here belong to this product until you write them back to the file. Save them before launching; the launch reads what is saved.
+                </p>
+              }
+            />
+          )}
+        </Panel>
+      )}
+
       {preview && product && (
         <>
           <Panel
-            title="Checks"
+            title="5 · Checks and launch"
             action={
               <span className="text-xs text-ink-3">
                 {preview.operations} operations · {preview.imageUploads} image upload{preview.imageUploads === 1 ? '' : 's'} · {preview.requests} request{preview.requests === 1 ? '' : 's'}
+                {preview.snapshotAt ? ` · Shopify read ${formatDateTime(preview.snapshotAt)}${preview.snapshotFresh ? '' : ', over 10 minutes ago'}` : ''}
               </span>
             }
           >
@@ -192,10 +380,14 @@ export function LaunchView({ live }: { live: LiveState }) {
               </div>
             )}
             <div className="mt-4 flex items-center gap-3">
-              <Button kind="primary" disabled={busy || !!running || !preview.canLaunch} onClick={() => act(() => launch.start(product.id, preview.templateId, acknowledged, board), 'Launching. Everything is created paused.')}>
+              <Button kind="primary" disabled={busy || !!running || !preview.canLaunch || planDirty} onClick={() => act(() => launch.start(product.id, preview.templateId, acknowledged, board), 'Launching. Everything is created paused.')}>
                 {running ? sentence(running.currentStep ?? running.status) : `Create ${preview.mode} campaign, paused`}
               </Button>
+              {planDirty && <span className="text-xs text-amber">Save the template changes in step 4 first.</span>}
               <span className="text-xs text-ink-3">{preview.structure.adSets.length} ad sets · {preview.structure.adSets.reduce((n, s) => n + s.ads.length, 0)} ads · nothing is activated by this button</span>
+              <Button kind="quiet" disabled={busy} title="One Shopify query" onClick={() => act(() => line.refreshShopify(product.id), 'Reading the product back from Shopify: one query.')}>
+                Re-read from Shopify
+              </Button>
               <Button kind="quiet" disabled={busy} title="One batch of delivery estimates; nothing is created" onClick={() => act(async () => setTargetingChecks((await launch.validateTargeting(product.id, preview.templateId, board)).checks), 'Targeting checked with Meta: one request.')}>
                 Check targeting with Meta
               </Button>
@@ -214,7 +406,7 @@ export function LaunchView({ live }: { live: LiveState }) {
           </Panel>
 
           <Panel
-            title={board ? 'Board' : `Structure · ${preview.structure.campaignName}`}
+            title={board ? '6 · Board' : `6 · Structure · ${preview.structure.campaignName}`}
             action={
               <span className="flex items-center gap-2">
                 {board ? (

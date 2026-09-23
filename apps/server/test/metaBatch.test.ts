@@ -32,7 +32,7 @@ describe('batch helpers', () => {
     expect(results[0]).toEqual({ code: 200, body: { id: '1' }, name: 'a' });
     expect(opError(results[0]!)).toBeNull();
     expect(opError(results[1]!)).toMatchObject({ code: 100, error_subcode: 4834011 });
-    expect(opError(results[2]!)).toMatchObject({ message: 'no response (timed out)' });
+    expect(opError(results[2]!)).toMatchObject({ message: 'no response: the operation it depends on failed, or it timed out' });
   });
 });
 
@@ -48,8 +48,10 @@ describe('MetaClient', () => {
     expect(call.url).toBe('https://graph.facebook.com/v26.0/');
     expect(call.url).not.toContain('access_token');
     expect(call.headers.authorization).toBe('Bearer EAAMetaSecretToken1234567890');
-    const batch = JSON.parse(call.form!.batch as string) as { attached_files: string; body: string }[];
+    const batch = JSON.parse(call.form!.batch as string) as { attached_files: string; body: string; omit_response_on_success: boolean }[];
     expect(batch[0]!.attached_files).toBe('img0');
+    // Without this Meta omits the body of any operation another one depends on, and its ID is lost.
+    expect(batch[0]!.omit_response_on_success).toBe(false);
     expect(batch[0]!.body).toBe('name=a.jpg');
     expect((call.form!.img0 as { name: string }[])[0]!.name).toBe('a.jpg');
     expect(JSON.stringify(ctx.db.select().from((await import('../src/db/schema.ts')).requests).all())).not.toContain('MetaSecret');

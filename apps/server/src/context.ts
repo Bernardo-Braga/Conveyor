@@ -18,7 +18,9 @@ import { makeWriters, type RunCli, type WriterSet } from './listing/writers/inde
 import { codexEngine } from './images/codexWorkers.ts';
 import { openaiEngine } from './images/openaiEngine.ts';
 import type { EngineSet } from './images/engine.ts';
+import { shopifyMediaJob } from './jobs/shopifyMediaJob.ts';
 import { generateBatchJob } from './jobs/generateBatchJob.ts';
+import { importShopifyPhotosJob } from './jobs/importShopifyPhotosJob.ts';
 import { MetaClient } from './meta/client.ts';
 import { activateJob, applyEditsJob, findInterestsJob, launchJob, pullInsightsJob, readCampaignJob, validateInterestsJob } from './jobs/metaJobs.ts';
 import type { ImageSettings } from '@conveyor/shared';
@@ -72,7 +74,9 @@ export function createContext(opts: ContextOptions = {}): AppContext {
     .register(connectionTestJob(shopifyTokens))
     .register(pullProductJob({ shopify }))
     .register(listingJob({ shopify, writers }))
-    .register(generateBatchJob({ shopify, engines }));
+    .register(generateBatchJob({ shopify, engines }))
+    .register(shopifyMediaJob({ shopify }))
+    .register(importShopifyPhotosJob({ shopify }));
   const meta = new MetaClient({ ledger, secrets });
   registry.register(launchJob({ meta, shopify })).register(activateJob({ meta })).register(findInterestsJob({ meta })).register(validateInterestsJob({ meta })).register(pullInsightsJob({ meta })).register(readCampaignJob({ meta })).register(applyEditsJob({ meta }));
   const worker = new JobWorker(services, registry);

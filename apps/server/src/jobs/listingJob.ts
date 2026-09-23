@@ -3,11 +3,11 @@ import { ListingDraft, ListingJobInput, SourceProduct, WRITER_LABELS, type JobEr
 import { costs, products } from '../db/schema.ts';
 import { productDir } from '../env.ts';
 import { usdPerCnyToday } from '../listing/cnyRate.ts';
-import { ensurePhotos } from '../listing/photos.ts';
+import { ensurePhotos, photoIndexes } from '../listing/photos.ts';
 import { usdPerCny } from '../listing/pricing.ts';
 import { buildDraftInput, createDraft } from '../listing/shopifyDraft.ts';
 import { runListingWriter, WriterError, type WriterSet } from '../listing/writers/index.ts';
-import { markAttention, setState } from '../products/repo.ts';
+import { markAttention, recentTitles, setState } from '../products/repo.ts';
 import type { ShopifyClient } from '../shopify/client.ts';
 import { JobStepError, type JobDefinition } from './types.ts';
 
@@ -61,11 +61,16 @@ export function listingJob(deps: { shopify: ShopifyClient; writers: WriterSet })
           const source = SourceProduct.parse(row.source);
           const settings = ctx.settings.get('import');
           const { dir, files } = ctx.prior.photos as { dir: string; files: string[] };
+          const focus = row.focus.trim();
+          // Names already used in the store, so the writer does not hand a second product the first one's title.
+          const history = recentTitles(ctx.db, { exclude: row.id });
           ctx.log(`Running ${WRITER_LABELS[settings.listing.writer]}. This uses your plan, not an API request.`);
+          if (focus) ctx.log(`Focus for this listing: ${focus}`);
+          if (history.length) ctx.log(`${history.length} title(s) the store has already used go to the writer, so this one gets its own name.`);
 
           let outcome;
           try {
-            outcome = await runListingWriter(ctx.writers, settings.listing.writer, { dir, source, brandVoice: settings.listing.brandVoice, photos: files, productId: row.id, jobId: ctx.jobId }, (m, level) => ctx.log(m, level ?? 'info'));
+            outcome = await runListingWriter(ctx.writers, settings.listing.writer, { dir, source, brandVoice: settings.listing.brandVoice, instructions: settings.listing.instructions, focus, recentTitles: history, photos: files, productId: row.id, jobId: ctx.jobId }, (m, level) => ctx.log(m, level ?? 'info'));
           } catch (err) {
             if (err instanceof WriterError) {
               throw new JobStepError(err.message, {
@@ -104,7 +109,9 @@ export function listingJob(deps: { shopify: ShopifyClient; writers: WriterSet })
           const draft = ListingDraft.parse(row.listingDraft);
           const settings = ctx.settings.get('import');
           const { usdPerCny: rate } = ctx.prior.price as { usdPerCny: number };
-          const plan = buildDraftInput({ source, draft, settings, usdPerCny: rate, sourceMeta: { platform: source.source.platform, itemId: source.source.itemId, url: source.source.url, importedAt: row.createdAt, conveyorProductId: row.id } });
+          // Only the photos the writer read may be dropped by its imageOrder; the rest are kept.
+          const reviewedImages = photoIndexes((ctx.prior.photos as { files?: string[] } | undefined)?.files ?? []);
+          const plan = buildDraftInput({ source, draft, settings, usdPerCny: rate, reviewedImages, sourceMeta: { platform: source.source.platform, itemId: source.source.itemId, url: source.source.url, importedAt: row.createdAt, conveyorProductId: row.id } });
           for (const n of plan.notes) ctx.log(n, 'warn');
           const existingId = ctx.input.rewrite ? row.shopifyProductId : null;
           const created = await createDraft(deps.shopify, plan, { productId: row.id, jobId: ctx.jobId, existingId });

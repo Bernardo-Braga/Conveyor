@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ImportSettings, ListingDraft, type SourceProduct } from '@conveyor/shared';
+import { ImportSettings, ListingDraft, MAX_PHOTOS, type SourceProduct } from '@conveyor/shared';
 import { createApp } from '../src/app.ts';
 import { costs, products, requests } from '../src/db/schema.ts';
+import { photoIndexes } from '../src/listing/photos.ts';
 import { buildDraftInput, createDraft } from '../src/listing/shopifyDraft.ts';
+import { recentTitles } from '../src/products/repo.ts';
 import { mapAliexpress } from '../src/suppliers/mapAliexpress.ts';
 import { claudeAuthOk, claudeResult, fakeCli, fakeFetch, fixture, json, testContext, type CliCall, type Recorded } from './helpers.ts';
 
@@ -52,6 +54,28 @@ describe('buildDraftInput', () => {
     expect(input.metafields.find((m) => m.key === 'needs_check')).toBeTruthy();
     expect(input.seo.title.length).toBeLessThanOrEqual(60);
     expect(JSON.stringify(input)).not.toContain('sellerId');
+  });
+
+  it('keeps the gallery images the writer never saw, after the ones it chose', () => {
+    // The writer reads MAX_PHOTOS photos, so its imageOrder can only judge those. A 1688 gallery
+    // of 7 with imageOrder [0,3,1,2] used to reach Shopify as 4 images; 4, 5 and 6 were lost.
+    const src = source();
+    expect(src.images.length).toBeGreaterThan(MAX_PHOTOS);
+    const reviewedImages = photoIndexes(Array.from({ length: MAX_PHOTOS }, (_, i) => `photo-${i}.jpg`));
+    const plan = buildDraftInput({ source: src, draft: { ...goodDraft(), imageOrder: [0, 3, 1, 2] }, settings, usdPerCny: 0.14, reviewedImages, sourceMeta: {} });
+    const files = (plan.input as { files: { originalSource: string }[] }).files;
+    expect(files.map((f) => f.originalSource)).toEqual([src.images[0], src.images[3], src.images[1], src.images[2], ...src.images.slice(MAX_PHOTOS)]);
+    expect(plan.imageCount).toBe(src.images.length);
+    expect(plan.notes.some((n) => n.includes('did not see'))).toBe(true);
+  });
+
+  it('drops a reviewed image the writer rejected, and adds no note when it saw them all', () => {
+    const src = source();
+    const reviewedImages = photoIndexes(Array.from({ length: src.images.length }, (_, i) => `photo-${i}.jpg`));
+    const plan = buildDraftInput({ source: src, draft: { ...goodDraft(), imageOrder: [1, 0] }, settings, usdPerCny: 0.14, reviewedImages, sourceMeta: {} });
+    const files = (plan.input as { files: { originalSource: string }[] }).files;
+    expect(files.map((f) => f.originalSource)).toEqual([src.images[1], src.images[0]]);
+    expect(plan.notes.some((n) => n.includes('did not see'))).toBe(false);
   });
 
   it('falls back to the supplier image order and goes async above 100 variants', () => {
@@ -153,6 +177,27 @@ describe('a pasted link becomes a Shopify draft in 2 API requests', () => {
     const job = t.ctx.worker.list().find((j) => j.type === 'write_listing')!;
     expect(job.status).toBe('done');
     expect(job.completedSteps).toEqual(['source', 'photos', 'write', 'price', 'shopify_draft', 'handoff']);
+    await t.ctx.close();
+  });
+
+  it('the focus typed with the link reaches the writer, and can be changed before a rewrite', async () => {
+    const t = await setup();
+    const r = (await (await t.post('/api/line', { text: LINK, focus: 'The full-grain leather; write for commuters.' })).json()) as { productId: number };
+    await t.ctx.worker.drain();
+
+    const prompt = t.cli.of('claude').find((c) => !isAuth(c))!.args.join('\n');
+    expect(prompt).toContain('Focus for this listing: The full-grain leather; write for commuters.');
+    expect(prompt).toContain('Never invent a fact to fit the focus.');
+    const view = (await (await t.app.request(`/api/products/${r.productId}`)).json()) as { focus: string };
+    expect(view.focus).toBe('The full-grain leather; write for commuters.');
+    expect(t.billable()).toHaveLength(2); // the focus costs nothing: it rides along with the writer run
+
+    // Changed on the row, then used by the next run. Still local.
+    const changed = (await (await t.app.request(`/api/products/${r.productId}/focus`, { method: 'PUT', body: JSON.stringify({ focus: 'Lead on the rubber sole' }), headers: { 'content-type': 'application/json' } })).json()) as { focus: string };
+    expect(changed.focus).toBe('Lead on the rubber sole');
+    await t.post(`/api/products/${r.productId}/write-listing`);
+    await t.ctx.worker.drain();
+    expect(t.cli.of('claude').filter((c) => !isAuth(c)).at(-1)!.args.join('\n')).toContain('Focus for this listing: Lead on the rubber sole');
     await t.ctx.close();
   });
 
@@ -277,6 +322,22 @@ describe('a pasted link becomes a Shopify draft in 2 API requests', () => {
     expect(t.ff.calls.filter((c) => c.url.includes('aliexpress-media'))).toHaveLength(0);
     expect(t.billable()).toHaveLength(2);
     expect(t.ctx.worker.list().find((j) => j.type === 'write_listing')!.status).toBe('done');
+    await t.ctx.close();
+  });
+
+  it('hands the writer the titles the store already uses, and leaves the product\'s own out of them', async () => {
+    const t = await setup();
+    t.ctx.db.insert(products).values({ origin: 'link', state: 'ready_to_launch', title: 'Ashworth leather loafer', listingDraft: { ...goodDraft(), title: 'Ashworth leather loafer' } }).run();
+    t.ctx.settings.set('import', { listing: { instructions: 'Never use the word premium.' } });
+    const r = (await (await t.post('/api/line', { text: LINK })).json()) as { productId: number };
+    await t.ctx.worker.drain();
+    const prompt = t.cli.calls.find((c) => c.file === 'claude' && !isAuth(c))!.args.join('\n');
+    expect(prompt).toContain('- Ashworth leather loafer');
+    expect(prompt).toContain('Do not reuse one of these titles');
+    expect(prompt).toContain('Never use the word premium.');
+    // Its own draft title is written during the same job; a rewrite must not be told to avoid it.
+    expect(recentTitles(t.ctx.db, { exclude: r.productId })).not.toContain('Soft-sole slip-on loafers for men');
+    expect(recentTitles(t.ctx.db)).toEqual(['Soft-sole slip-on loafers for men', 'Ashworth leather loafer']);
     await t.ctx.close();
   });
 

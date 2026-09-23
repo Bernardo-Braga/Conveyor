@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { and, eq, inArray, max } from 'drizzle-orm';
-import { GenerateBatchInput, ListingDraft, ShopifySnapshot, type Aspect, type ImageSettings, type JobError } from '@conveyor/shared';
+import { GenerateBatchInput, ListingDraft, ShopifySnapshot, shotFor, splitShots, type Aspect, type ImageSettings, type JobError } from '@conveyor/shared';
 import { creativeBatches, creatives, products } from '../db/schema.ts';
 import { productDir } from '../env.ts';
 import type { EngineSet, EngineSlot } from '../images/engine.ts';
@@ -66,7 +66,9 @@ export function generateBatchJob(deps: { shopify: ShopifyClient; engines: (setti
 
           // The prompt is filled once per batch; the 9:16 rule is appended per format at generate time.
           const values = { ...builtinValues(snapshot, draft?.success ? draft.data : null, brand, formats[0]!), ...ctx.input.variables };
-          const { prompt, missing } = fillPrompt(template.body, values, '1:1');
+          // A body may carry its own "Shots:" list; otherwise each image gets a built-in direction.
+          const { body, shots } = splitShots(template.body);
+          const { prompt, missing } = fillPrompt(body, values, '1:1');
           if (missing.length) ctx.log(`Prompt variables without a value were left blank: ${missing.join(', ')}.`, 'warn');
           const fullPrompt = ctx.input.regenerate?.instruction ? `${prompt}\n\nEdit instruction: ${ctx.input.regenerate.instruction}` : prompt;
 
@@ -83,11 +85,12 @@ export function generateBatchJob(deps: { shopify: ShopifyClient; engines: (setti
             for (let i = 1; i <= countPerFormat; i++) {
               const slot = last + i;
               const c = ctx.db.insert(creatives).values({ batchId: batch.id, productId: row.id, aspect, slot, status: 'pending', fileName: finishedFileName(snapshot.handle, aspect, slot) }).returning({ id: creatives.id }).get();
-              slots.push({ creativeId: c.id, aspect, slot });
+              // A regeneration replaces one image, so it keeps the look of the batch it came from.
+              slots.push(regen ? { creativeId: c.id, aspect, slot } : { creativeId: c.id, aspect, slot, direction: shotFor(shots, i - 1) });
             }
           }
           setState(ctx.db, row.id, 'generating', { failure: null });
-          ctx.log(`Batch #${batch.id}: ${slots.length} image(s) planned (${formats.map((f) => `${countPerFormat} × ${f}`).join(', ')}) on ${engine}, template "${template.name}" v${template.version}.`);
+          ctx.log(`Batch #${batch.id}: ${slots.length} image(s) planned (${formats.map((f) => `${countPerFormat} × ${f}`).join(', ')}) on ${engine}, template "${template.name}" v${template.version}, ${shots.length ? `${shots.length} shot(s) from the template` : 'built-in shot list'}.`);
           return { batchId: batch.id, slots, engine, referenceRule: template.referenceRule, handle: snapshot.handle };
         },
       },

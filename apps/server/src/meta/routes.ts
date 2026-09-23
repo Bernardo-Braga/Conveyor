@@ -1,19 +1,23 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ApplyEditsInput, BoardSaveInput, ImportConfirm, InterestPick, LaunchInput, ShopifySnapshot, TemplateDuplicate, TemplateSave, type ImportOutcome, type LaunchPreview } from '@conveyor/shared';
+import { ApplyEditsInput, BoardSaveInput, ImportConfirm, InterestPick, LaunchInput, LaunchPlanSave, ShopifySnapshot, TemplateDuplicate, TemplateSave, type CreativeView, type ImportOutcome, type LaunchPlanView, type LaunchPreview } from '@conveyor/shared';
 import { applyMapping, detectFormat, fromGraphExport, getProfile, linkTemplateCopy, proposeMapping, saveProfile, shapeSignature } from './importer.ts';
+import { toCreativeView } from '../images/repo.ts';
 import type { AppContext } from '../context.ts';
-import { campaigns, products, templates } from '../db/schema.ts';
+import { campaigns, creatives, products, templates } from '../db/schema.ts';
 import { findInterests, pickInterest, resolveVariantInterests } from './interests.ts';
-import { approvedCreatives, buildStructure, launchCounts } from './launch.ts';
+import { approvedCreatives, buildStructure, creativeSlots, launchCounts } from './launch.ts';
 import { launchBlockers, preflight } from './preflight.ts';
 import { editRequestCount, learningWarnings } from './liveEdit.ts';
 import { validateTargeting } from './validateTargeting.ts';
 import { campaignView, listCampaigns, readState } from './repo.ts';
+import { clearPlan, finishedCreatives, getPlan, planCreativeIds, savePlan, templateForProduct } from './plan.ts';
+import { overrideDefaults } from './overrides.ts';
+import { isFresh } from '../shopify/snapshot.ts';
 import { duplicateTemplate, seedTemplates, syncTemplates, templatesDir, trashTemplate, writeTemplateFile } from './templateFiles.ts';
 import { exportForOtherTool, getTemplate, listTemplates, parseTemplate } from './templates.ts';
 
@@ -160,24 +164,82 @@ export function metaRoutes(ctx: AppContext) {
     return c.json({ ok: true });
   });
 
+  /**
+   * The product's launch plan: its own copy of the template and the creatives chosen for it.
+   * Local, 0 requests. A product with no plan yet gets the template as stored and every
+   * approved creative, which is what a launch would have used anyway.
+   */
+  r.get('/products/:id/launch-plan', (c) => {
+    const productId = Number(c.req.param('id'));
+    const templateId = Number(c.req.query('templateId') ?? defaultId() ?? 0);
+    const plan = getPlan(ctx.db, productId, templateId);
+    if (!plan) return c.json({ error: 'Pick a template first.' }, 400);
+    const chosen = plan.creativeIds;
+    const rows = finishedCreatives(ctx.db, productId).map(toCreativeView);
+    const ordered = [...chosen.map((id) => rows.find((r) => r.id === id)).filter((r): r is CreativeView => !!r), ...rows.filter((r) => !chosen.includes(r.id))];
+    const view: LaunchPlanView = {
+      productId,
+      templateId,
+      templateName: plan.template.name,
+      template: plan.template as unknown as Record<string, unknown>,
+      edited: plan.edited,
+      overrides: plan.overrides,
+      defaults: overrideDefaults(plan.template),
+      updatedAt: plan.updatedAt,
+      creatives: ordered,
+      creativeIds: chosen,
+      slots: creativeSlots(plan.template.x_conveyor?.fillRule ?? ctx.settings.get('adsetup').fillRule, plan.template.adset_count, plan.template.ads_per_adset),
+      fillRule: plan.template.x_conveyor?.fillRule ?? ctx.settings.get('adsetup').fillRule,
+    };
+    return c.json(view);
+  });
+
+  /**
+   * Saves one part of the product's plan: its copy of the template, its chosen creatives, or the
+   * launch settings. What is not sent is left as it is. Choosing a creative that has not been
+   * approved approves it, so what the Launch view shows is what is sent.
+   */
+  r.put('/products/:id/launch-plan', async (c) => {
+    const productId = Number(c.req.param('id'));
+    const body = LaunchPlanSave.parse(await c.req.json());
+    const current = getPlan(ctx.db, productId, body.templateId);
+    if (!current) return c.json({ error: 'Template not found.' }, 404);
+    const finished = new Set(finishedCreatives(ctx.db, productId).map((r) => r.id));
+    const chosen = body.creativeIds ? body.creativeIds.filter((id) => finished.has(id)) : null;
+    if (chosen?.length) ctx.db.update(creatives).set({ approval: 'approved' }).where(inArray(creatives.id, chosen)).run();
+    savePlan(ctx.db, productId, body.templateId, {
+      ...(body.template ? { template: parseTemplate(body.template) } : {}),
+      ...(chosen ? { creativeIds: chosen } : {}),
+      ...(body.overrides ? { overrides: body.overrides } : {}),
+    });
+    return c.json({ ok: true, creativeIds: chosen ?? current.creativeIds });
+  });
+
+  /** "Start again from the template": drops the product's copy, leaving the template file alone. */
+  r.delete('/products/:id/launch-plan', (c) => {
+    clearPlan(ctx.db, Number(c.req.param('id')));
+    return c.json({ ok: true });
+  });
+
   /** Everything the Launch view shows before sending: structure, checks, operation and request counts. Local. */
   r.get('/products/:id/launch-preview', async (c) => {
     const productId = Number(c.req.param('id'));
     const templateId = Number(c.req.query('templateId') ?? defaultId() ?? 0);
     const acknowledge = (c.req.query('acknowledge') ?? '').split(',').filter(Boolean);
-    const t = getTemplate(ctx.db, templateId);
+    const t = templateForProduct(ctx.db, productId, templateId);
     if (!t) return c.json({ error: 'Pick a template first.' }, 400);
     const row = ctx.db.select().from(products).where(eq(products.id, productId)).get();
     if (!row) return c.json({ error: 'Not found' }, 404);
     const setup = ctx.settings.get('adsetup');
     const conn = ctx.settings.get('connections').meta;
-    const { structure, notes, creativeRows } = buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames });
-    const checks = preflight({ template: t, structure, snapshot: row.snapshot ? ShopifySnapshot.parse(row.snapshot) : null, creatives: creativeRows, pageId: conn.pageId, pixelId: conn.pixelId, adAccountId: conn.adAccountId, tokenSet: !!(await ctx.secrets.get('meta_access_token')) });
+    const creativeIds = planCreativeIds(ctx.db, productId, templateId);
+    const { structure, notes, creativeRows } = buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames, creativeIds });
+    const checks = preflight({ template: t, structure, snapshot: row.snapshot ? ShopifySnapshot.parse(row.snapshot) : null, snapshotFresh: isFresh(row.snapshotAt), creatives: creativeRows, pageId: conn.pageId, pixelId: conn.pixelId, adAccountId: conn.adAccountId, tokenSet: !!(await ctx.secrets.get('meta_access_token')) });
     const used = new Set(structure.adSets.flatMap((s) => s.ads.map((a) => a.creativeId)));
     const uniqueCreatives = new Set(structure.adSets.flatMap((s) => s.ads.map((a) => `${a.creativeId}|${a.primaryText}|${a.headline}`))).size;
-    const newImages = approvedCreatives(ctx.db, productId).filter((cr) => used.has(cr.id) && !cr.metaImageHash).length;
+    const newImages = creativeRows.filter((cr) => used.has(cr.id) && !cr.metaImageHash).length;
     const counts = launchCounts(structure, uniqueCreatives, newImages);
-    const preview: LaunchPreview = { productId, templateId, mode: t.campaign.budget.mode, structure, operations: counts.operations, imageUploads: newImages, requests: counts.requests + (row.snapshotAt && Date.now() - new Date(row.snapshotAt).getTime() < 600_000 ? 0 : 1), checks, canLaunch: launchBlockers(checks, acknowledge).length === 0, notes };
+    const preview: LaunchPreview = { productId, templateId, mode: t.campaign.budget.mode, structure, operations: counts.operations, imageUploads: newImages, requests: counts.requests + (isFresh(row.snapshotAt) ? 0 : 1), checks, snapshotAt: row.snapshotAt, snapshotFresh: isFresh(row.snapshotAt), canLaunch: launchBlockers(checks, acknowledge).length === 0, notes };
     return c.json(preview);
   });
 
@@ -191,19 +253,19 @@ export function metaRoutes(ctx: AppContext) {
   r.post('/products/:id/launch-preview', async (c) => {
     const productId = Number(c.req.param('id'));
     const body = LaunchInput.parse({ ...((await c.req.json().catch(() => ({}))) as object), productId });
-    const t = getTemplate(ctx.db, body.templateId);
+    const t = templateForProduct(ctx.db, productId, body.templateId);
     const row = ctx.db.select().from(products).where(eq(products.id, productId)).get();
     if (!t || !row) return c.json({ error: 'Not found' }, 404);
     const conn = ctx.settings.get('connections').meta;
     const setup = ctx.settings.get('adsetup');
-    const built = buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames });
+    const built = buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames, creativeIds: planCreativeIds(ctx.db, productId, body.templateId) });
     const structure = body.structure ?? built.structure;
-    const checks = preflight({ template: t, structure, snapshot: row.snapshot ? ShopifySnapshot.parse(row.snapshot) : null, creatives: built.creativeRows, pageId: conn.pageId, pixelId: conn.pixelId, adAccountId: conn.adAccountId, tokenSet: !!(await ctx.secrets.get('meta_access_token')) });
+    const checks = preflight({ template: t, structure, snapshot: row.snapshot ? ShopifySnapshot.parse(row.snapshot) : null, snapshotFresh: isFresh(row.snapshotAt), creatives: built.creativeRows, pageId: conn.pageId, pixelId: conn.pixelId, adAccountId: conn.adAccountId, tokenSet: !!(await ctx.secrets.get('meta_access_token')) });
     const used = new Set(structure.adSets.flatMap((s) => s.ads.map((a) => a.creativeId)));
     const uniqueCreatives = new Set(structure.adSets.flatMap((s) => s.ads.map((a) => `${a.creativeId}|${a.primaryText}|${a.headline}`))).size;
     const newImages = built.creativeRows.filter((cr) => used.has(cr.id) && !cr.metaImageHash).length;
     const counts = launchCounts(structure, uniqueCreatives, newImages);
-    const preview: LaunchPreview = { productId, templateId: t ? body.templateId : 0, mode: t.campaign.budget.mode, structure, operations: counts.operations, imageUploads: newImages, requests: counts.requests, checks, canLaunch: launchBlockers(checks, body.acknowledge).length === 0, notes: built.notes };
+    const preview: LaunchPreview = { productId, templateId: t ? body.templateId : 0, mode: t.campaign.budget.mode, structure, operations: counts.operations, imageUploads: newImages, requests: counts.requests + (isFresh(row.snapshotAt) ? 0 : 1), checks, snapshotAt: row.snapshotAt, snapshotFresh: isFresh(row.snapshotAt), canLaunch: launchBlockers(checks, body.acknowledge).length === 0, notes: built.notes };
     return c.json(preview);
   });
 
@@ -211,11 +273,11 @@ export function metaRoutes(ctx: AppContext) {
   r.post('/products/:id/launch-validate', async (c) => {
     const productId = Number(c.req.param('id'));
     const body = LaunchInput.parse({ ...((await c.req.json().catch(() => ({}))) as object), productId });
-    const t = getTemplate(ctx.db, body.templateId);
+    const t = templateForProduct(ctx.db, productId, body.templateId);
     if (!t) return c.json({ error: 'Template not found' }, 404);
     const conn = ctx.settings.get('connections').meta;
     const setup = ctx.settings.get('adsetup');
-    const structure = body.structure ?? buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames }).structure;
+    const structure = body.structure ?? buildStructure(ctx.db, { template: t, productId, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames, creativeIds: planCreativeIds(ctx.db, productId, body.templateId) }).structure;
     const out = await validateTargeting(ctx.meta, { template: t, structure, adAccountId: conn.adAccountId, pixelId: conn.pixelId || null, now: new Date(), keepTimeOfDay: setup.keepTimeOfDay, productId });
     return c.json(out);
   });

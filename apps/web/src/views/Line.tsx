@@ -11,6 +11,8 @@ type Notice = { tone: 'cobalt' | 'amber' | 'green' | 'red' | 'grey'; text: strin
 /** The Line: every product and where it is on the track. */
 export function LineView({ live }: { live: LiveState }) {
   const [text, setText] = useState('');
+  /** This product's own direction for the listing. Cleared after every add: it never carries over. */
+  const [focus, setFocus] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [search, setSearch] = useState<Extract<AddToLineResult, { kind: 'search' }> | null>(null);
@@ -30,8 +32,9 @@ export function LineView({ live }: { live: LiveState }) {
   const handle = (r: AddToLineResult) => {
     setSearch(null);
     if (r.kind === 'importing') {
-      setNotice({ tone: 'cobalt', text: 'Added. One supplier request is on its way; the row updates live.' });
+      setNotice({ tone: 'cobalt', text: focus.trim() ? 'Added with its focus. One supplier request is on its way; the row updates live.' : 'Added. One supplier request is on its way; the row updates live.' });
       setText('');
+      setFocus('');
       setHighlight(r.productId);
     } else if (r.kind === 'duplicate') {
       setNotice({ tone: 'amber', text: 'Already on the line. No request was made.' });
@@ -51,7 +54,7 @@ export function LineView({ live }: { live: LiveState }) {
     setBusy(true);
     setNotice(null);
     try {
-      handle(await line.add(text));
+      handle(await line.add(text, focus));
     } catch (err) {
       setNotice({ tone: 'red', text: err instanceof ApiError ? err.message : 'Something went wrong.' });
     } finally {
@@ -62,11 +65,15 @@ export function LineView({ live }: { live: LiveState }) {
   return (
     <div className="space-y-6">
       <Panel>
-        <form className="flex gap-3" onSubmit={submit}>
-          <input className={inputClass} placeholder="Paste an AliExpress or 1688 link, or type a product name" value={text} onChange={(e) => setText(e.target.value)} autoFocus />
-          <Button kind="primary" type="submit" disabled={busy || !text.trim()}>
-            {busy ? 'Working' : 'Add to the line'}
-          </Button>
+        <form className="space-y-2" onSubmit={submit}>
+          <div className="flex gap-3">
+            <input className={inputClass} placeholder="Paste an AliExpress or 1688 link, or type a product name" value={text} onChange={(e) => setText(e.target.value)} autoFocus />
+            <Button kind="primary" type="submit" disabled={busy || !text.trim()}>
+              {busy ? 'Working' : 'Add to the line'}
+            </Button>
+          </div>
+          <input className={inputClass} placeholder="Focus for this listing, optional — for example: lead on the full-grain leather, for commuters" value={focus} onChange={(e) => setFocus(e.target.value)} maxLength={500} />
+          <p className="text-xs text-ink-3">The focus goes to the listing writer for this product alone, on top of the brand voice under Settings. It costs no requests, and the box empties after each add.</p>
         </form>
         {notice && <p className={`text-sm mt-3 ${notice.tone === 'red' ? 'text-red' : notice.tone === 'amber' ? 'text-amber' : notice.tone === 'cobalt' ? 'text-cobalt' : 'text-ink-2'}`}>{notice.text}</p>}
         {search && search.results.length > 0 && (
@@ -124,6 +131,7 @@ function stateTone(state: ProductView['state']) {
 
 function ProductRow({ p, highlighted, onChange }: { p: ProductView; highlighted: boolean; onChange: () => Promise<unknown> }) {
   const [busy, setBusy] = useState(false);
+  const [focusDraft, setFocusDraft] = useState<string | null>(null);
   const act = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     try {
@@ -157,6 +165,37 @@ function ProductRow({ p, highlighted, onChange }: { p: ProductView; highlighted:
             </span>
           )}
         </p>
+        {focusDraft !== null ? (
+          <div className="flex gap-2 mt-2">
+            <input
+              className={inputClass}
+              autoFocus
+              maxLength={500}
+              placeholder="What this listing should lean on"
+              value={focusDraft}
+              onChange={(e) => setFocusDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setFocusDraft(null);
+                if (e.key === 'Enter') void act(() => line.setFocus(p.id, focusDraft)).then(() => setFocusDraft(null));
+              }}
+            />
+            <Button kind="primary" disabled={busy} onClick={() => act(() => line.setFocus(p.id, focusDraft)).then(() => setFocusDraft(null))}>
+              Save
+            </Button>
+            <Button kind="quiet" onClick={() => setFocusDraft(null)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          p.focus && (
+            <p className="text-xs text-ink-2 mt-1">
+              Focus: {p.focus}{' '}
+              <button type="button" className="text-cobalt" onClick={() => setFocusDraft(p.focus)}>
+                Change
+              </button>
+            </p>
+          )
+        )}
         {p.listing && p.listing.needsCheck.length > 0 && <p className="text-xs text-amber mt-1">Verify in Shopify: {p.listing.needsCheck.join(' · ')}</p>}
         {p.listing && p.listing.notes.length > 0 && <p className="text-xs text-ink-3 mt-1">{p.listing.notes.join(' ')}</p>}
         {p.failure && (
@@ -178,6 +217,11 @@ function ProductRow({ p, highlighted, onChange }: { p: ProductView; highlighted:
           <a className="px-3 py-1.5 text-sm rounded-md border border-transparent bg-cobalt text-cobalt-ink hover:brightness-110" href="#Studio">
             {p.state === 'editing_in_shopify' || p.state === 'from_shopify' ? 'Generate creatives' : 'Open in Studio'}
           </a>
+        )}
+        {p.platform && focusDraft === null && !p.focus && (
+          <Button kind="quiet" disabled={busy} title="Direction for this listing. 0 requests." onClick={() => setFocusDraft('')}>
+            Set a focus
+          </Button>
         )}
         {(p.state === 'writing_listing' || p.state === 'editing_in_shopify' || (p.state === 'needs_attention' && p.platform)) && (
           <Button kind="quiet" disabled={busy} title="One Claude request plus one Shopify request" onClick={() => act(() => listing.write(p.id))}>

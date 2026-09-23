@@ -104,12 +104,16 @@ export class MetaClient {
   /**
    * One batch request: up to 50 operations, optional binary files attached by name
    * (`attached_files` on the operation, multipart field of the same name).
+   *
+   * Every named operation sends `omit_response_on_success: false`. Meta omits the body of an
+   * operation another one depends on, returning `null` in its place, so without this the
+   * campaign, ad sets and creatives come back empty and their IDs are lost (17 September 2026).
    */
   async batch(ops: BatchOp[], meta: MetaMeta, files: Record<string, { data: Buffer; filename: string; type: string }> = {}): Promise<{ results: BatchResult[]; requestId: string | null }> {
     if (ops.length === 0) return { results: [], requestId: null };
     if (ops.length > 50) throw new Error(`A batch holds at most 50 operations, got ${ops.length}`);
     const form = new FormData();
-    form.set('batch', JSON.stringify(ops.map((op) => ({ method: op.method, relative_url: op.relative_url, ...(op.body ? { body: encodeBody(op.body) } : {}), ...(op.name ? { name: op.name } : {}), ...(op.attached_files ? { attached_files: op.attached_files } : {}) }))));
+    form.set('batch', JSON.stringify(ops.map((op) => ({ method: op.method, relative_url: op.relative_url, ...(op.body ? { body: encodeBody(op.body) } : {}), ...(op.name ? { name: op.name, omit_response_on_success: false } : {}), ...(op.attached_files ? { attached_files: op.attached_files } : {}) }))));
     form.set('include_headers', 'false');
     const token = await this.token();
     for (const [k, v] of Object.entries(await this.proofParams(token))) form.set(k, v);
@@ -126,5 +130,6 @@ export class MetaClient {
 /** Error body of a failed operation inside a batch, if any. */
 export function opError(r: BatchResult): MetaErrorBody | null {
   const b = r.body as { error?: MetaErrorBody } | null;
-  return b && typeof b === 'object' && b.error ? b.error : r.code >= 400 || r.code === 0 ? { message: r.code === 0 ? 'no response (timed out)' : `HTTP ${r.code}`, code: r.code } : null;
+  // Meta returns null for an operation it never ran because a dependency failed, and for one that timed out.
+  return b && typeof b === 'object' && b.error ? b.error : r.code >= 400 || r.code === 0 ? { message: r.code === 0 ? 'no response: the operation it depends on failed, or it timed out' : `HTTP ${r.code}`, code: r.code } : null;
 }

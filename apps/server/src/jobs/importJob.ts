@@ -49,7 +49,9 @@ export function importJob(deps: { rapidapi: RapidApiClient; quota: QuotaStore; e
           }
           const res = await deps.rapidapi.fetchItem(platform, itemId, { productId: ctx.productId, jobId: ctx.jobId });
           const q = deps.quota.get(platform);
-          ctx.log(`Fetched item ${itemId} from RapidAPI (1 request). Raw saved as #${res.rawId}.${q.remaining != null ? ` Quota ${q.remaining} remaining.` : ''}`, 'info', res.requestId);
+          // A 205 from item_detail is answered by a backup endpoint, which costs one more request.
+          if (res.requests > 1) ctx.log(`item_detail found no results (205), so ${res.endpoint} answered instead. That is ${res.requests} requests for this item, not 1.`, 'warn');
+          ctx.log(`Fetched item ${itemId} from RapidAPI (${res.requests} request${res.requests === 1 ? '' : 's'}). Raw saved as #${res.rawId}.${q.remaining != null ? ` Quota ${q.remaining} remaining.` : ''}`, 'info', res.requestId);
           return { rawId: res.rawId, reused: false };
         },
       },

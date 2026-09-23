@@ -10,7 +10,7 @@ export const FRESH_MS = 10 * 60 * 1000;
 const PRODUCT_FIELDS = `
     id handle title status descriptionHtml productType tags vendor onlineStoreUrl updatedAt
     featuredMedia { preview { image { url } } }
-    media(first: 50) { nodes { id ... on MediaImage { image { url altText } } } }
+    media(first: 50) { nodes { id ... on MediaImage { image { url altText width height } } } }
     options { name optionValues { name } }
     variants(first: 100) { nodes { id title sku price compareAtPrice media(first: 1) { nodes { id } } } }`;
 
@@ -34,7 +34,7 @@ interface ProductData {
   product: {
     id: string; handle: string; title: string; status: string; descriptionHtml: string; productType: string; tags: string[]; vendor: string; onlineStoreUrl: string | null; updatedAt: string;
     featuredMedia: { preview: { image: { url: string } | null } | null } | null;
-    media: { nodes: { id: string; image?: { url: string; altText: string | null } | null }[] };
+    media: { nodes: { id: string; image?: { url: string; altText: string | null; width: number | null; height: number | null } | null }[] };
     options: { name: string; optionValues: { name: string }[] }[];
     variants: { nodes: { id: string; title: string; sku: string | null; price: string; compareAtPrice: string | null; media: { nodes: { id: string }[] } }[] };
   } | null;
@@ -69,7 +69,7 @@ function toSnapshot(p: NonNullable<ProductData['product']>, currency: string): S
     vendor: p.vendor,
     onlineStoreUrl: p.onlineStoreUrl,
     featuredImage: p.featuredMedia?.preview?.image?.url ?? null,
-    images: p.media.nodes.filter((m) => m.image).map((m) => ({ id: m.id, url: m.image!.url, altText: m.image!.altText })),
+    images: p.media.nodes.filter((m) => m.image).map((m) => ({ id: m.id, url: m.image!.url, altText: m.image!.altText, width: m.image!.width ?? null, height: m.image!.height ?? null })),
     options: p.options.map((o) => ({ name: o.name, values: o.optionValues.map((v) => v.name) })),
     variants: p.variants.nodes.map((v) => ({ id: v.id, title: v.title, sku: v.sku, priceMinor: toMinor(v.price) ?? 0, compareAtPriceMinor: toMinor(v.compareAtPrice), imageId: v.media.nodes[0]?.id ?? null })),
     currency,

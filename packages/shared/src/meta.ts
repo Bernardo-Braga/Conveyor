@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Aspect } from './creatives.ts';
+import { Aspect, CreativeView } from './creatives.ts';
 
 /** Money in minor units, as the other tool exports it. */
 const Minor = z.number().int().nullable();
@@ -229,10 +229,99 @@ export const LaunchPreview = z.object({
   /** Requests the launch will make: 1 upload batch if any image is new, plus 1 object batch per 50 operations, plus a snapshot if stale. */
   requests: z.number().int(),
   checks: z.array(PreflightCheck),
+  /** When the product was last read back from Shopify, and whether that read is still fresh (under 10 minutes). */
+  snapshotAt: z.string().nullable(),
+  snapshotFresh: z.boolean(),
   canLaunch: z.boolean(),
   notes: z.array(z.string()),
 });
 export type LaunchPreview = z.infer<typeof LaunchPreview>;
+
+/**
+ * The few settings that change with every launch (PLAN.md section 9.5a): the campaign's name,
+ * when it starts and ends, who it targets and what it spends. They are kept with the product's
+ * launch plan rather than in the template, and are laid over the template when the launch is
+ * built, so the same template can run a hundred products without ever being edited.
+ *
+ * `null` always means "as the template has it". For the two times, `''` means the opposite of
+ * a time: no start or end is sent, so the ad sets run from the moment they are activated.
+ */
+const IsoOrBlank = z
+  .string()
+  .refine((v) => v === '' || !Number.isNaN(Date.parse(v)), 'Use an ISO time, or "" for no time at all')
+  .nullable()
+  .default(null);
+
+export const LaunchOverrides = z
+  .object({
+    /** The campaign name itself, not a pattern: what the user typed over the filled-in name. */
+    campaignName: z.string().trim().max(400).nullable().default(null),
+    startTime: IsoOrBlank,
+    endTime: IsoOrBlank,
+    /** `[]` everyone, `[1]` men, `[2]` women. */
+    genders: z.array(z.union([z.literal(1), z.literal(2)])).max(2).nullable().default(null),
+    ageMin: z.number().int().min(13).max(65).nullable().default(null),
+    ageMax: z.number().int().min(13).max(65).nullable().default(null),
+    countries: z.array(z.string().trim().length(2).toUpperCase()).max(25).nullable().default(null),
+    /** Off turns the gender and age above into firm limits rather than suggestions. */
+    advantageAudience: z.boolean().nullable().default(null),
+    /** The campaign's budget under CBO, every ad set's under ABO; lifetime when the template uses one. */
+    budgetMinor: z.number().int().positive().nullable().default(null),
+  })
+  .refine((o) => o.ageMin == null || o.ageMax == null || o.ageMin <= o.ageMax, { message: 'The minimum age is above the maximum.', path: ['ageMin'] });
+export type LaunchOverrides = z.infer<typeof LaunchOverrides>;
+
+/** Nothing overridden: every field as the template has it. */
+export const NO_OVERRIDES: LaunchOverrides = LaunchOverrides.parse({});
+
+/** Which fields this launch sets for itself, in the words the Launch tab uses. */
+export const OVERRIDE_LABELS: Record<keyof LaunchOverrides, string> = {
+  campaignName: 'campaign name',
+  startTime: 'start',
+  endTime: 'end',
+  genders: 'gender',
+  ageMin: 'minimum age',
+  ageMax: 'maximum age',
+  countries: 'countries',
+  advantageAudience: 'Advantage+ audience',
+  budgetMinor: 'budget',
+};
+
+export function overriddenFields(o: LaunchOverrides): string[] {
+  return (Object.keys(OVERRIDE_LABELS) as (keyof LaunchOverrides)[]).filter((k) => o[k] !== null).map((k) => OVERRIDE_LABELS[k]);
+}
+
+/** The Launch view's editable plan for one product: its own template copy and its chosen creatives. */
+export const LaunchPlanView = z.object({
+  productId: z.number().int(),
+  templateId: z.number().int(),
+  templateName: z.string(),
+  /** The template as it will be launched, before this launch's own settings are laid over it. */
+  template: z.record(z.string(), z.unknown()),
+  /** True when this product has its own copy, so "revert to the template" is worth offering. */
+  edited: z.boolean(),
+  /** What this launch sets for itself; `null` fields follow the template. */
+  overrides: LaunchOverrides,
+  /** The same fields as the template resolves them, for the placeholders beside each box. */
+  defaults: LaunchOverrides,
+  updatedAt: z.string().nullable(),
+  /** Every finished creative, with the chosen ones marked and ordered first. */
+  creatives: z.array(CreativeView),
+  creativeIds: z.array(z.number().int()),
+  /** How many different creatives the fill rule consumes; the same set in every ad set needs one ad set's worth. */
+  slots: z.number().int(),
+  fillRule: FillRule,
+});
+export type LaunchPlanView = z.infer<typeof LaunchPlanView>;
+
+/** A save of one part of the plan: anything left out is kept as it is. */
+export const LaunchPlanSave = z.object({
+  templateId: z.number().int(),
+  template: z.record(z.string(), z.unknown()).nullable().default(null),
+  creativeIds: z.array(z.number().int()).nullable().default(null),
+  overrides: LaunchOverrides.nullable().default(null),
+});
+export type LaunchPlanSave = z.infer<typeof LaunchPlanSave>;
 
 export const LaunchInput = z.object({
   productId: z.number().int(),

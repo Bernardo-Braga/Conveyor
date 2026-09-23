@@ -1,0 +1,4 @@
+{ "data": { "stagedUploadsCreate": { "stagedTargets": [
+  { "url": "https://shopify-staged-uploads.storage.googleapis.com/", "resourceUrl": "https://shopify-staged-uploads.storage.googleapis.com/tmp/1/products/abc/loafers_1x1_01.jpg", "parameters": [ { "name": "key", "value": "tmp/1/products/abc/loafers_1x1_01.jpg" }, { "name": "policy", "value": "eyJ..." }, { "name": "x-goog-signature", "value": "sig1" } ] },
+  { "url": "https://shopify-staged-uploads.storage.googleapis.com/", "resourceUrl": "https://shopify-staged-uploads.storage.googleapis.com/tmp/1/products/abc/loafers_1x1_02.jpg", "parameters": [ { "name": "key", "value": "tmp/1/products/abc/loafers_1x1_02.jpg" }, { "name": "policy", "value": "eyJ..." }, { "name": "x-goog-signature", "value": "sig2" } ] }
+], "userErrors": [] } }, "extensions": { "cost": { "requestedQueryCost": 21, "actualQueryCost": 21, "throttleStatus": { "maximumAvailable": 2000, "currentlyAvailable": 1979, "restoreRate": 100 } } } }

@@ -48,7 +48,10 @@ export function openaiEngine(deps: OpenAiEngineDeps): ImageEngine {
       for (const s of req.slots) groups.set(s.aspect, [...(groups.get(s.aspect) ?? []), s]);
       const references = await Promise.all(req.referencePaths.map(async (p) => ({ name: path.basename(p), type: MIME[path.extname(p).toLowerCase()] ?? 'image/png', data: await fs.readFile(p) })));
       const edit = req.edit ? { name: path.basename(req.edit.path), type: MIME[path.extname(req.edit.path).toLowerCase()] ?? 'image/jpeg', data: await fs.readFile(req.edit.path) } : null;
-      const prompt = req.edit ? `${req.prompt}\n\nThe first image is the one to edit: keep everything about it except this change: ${req.edit.instruction}` : req.prompt;
+      // One request makes n images from one prompt, so the shot list travels inside it.
+      const shots = [...new Set(req.slots.map((s) => s.direction).filter((d): d is string => !!d))];
+      const varied = shots.length > 1 ? `${req.prompt}\n\nMake every image a clearly different photograph, not the same shot relit. Use these shots, one per image, in order, repeating if needed:\n${shots.map((d, i) => `${i + 1}. ${d}`).join('\n')}` : req.prompt;
+      const prompt = req.edit ? `${req.prompt}\n\nThe first image is the one to edit: keep everything about it except this change: ${req.edit.instruction}` : varied;
 
       const produced: number[] = [];
       let apiRequests = 0;

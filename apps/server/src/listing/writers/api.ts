@@ -7,7 +7,7 @@ import { VERSIONS } from '../../../../../config/versions.ts';
 import type { LedgerClient } from '../../http/ledgerClient.ts';
 import type { Secrets } from '../../secrets/keychain.ts';
 import { claudeClient } from '../claudeClient.ts';
-import { listingRules, promptProduct } from '../prompt.ts';
+import { focusNote, historyNote, listingRules, promptProduct } from '../prompt.ts';
 import { validate } from './claudeCode.ts';
 import { WriterError, type ListingWriter, type WriterRequest, type WriterRun } from './types.ts';
 
@@ -28,7 +28,7 @@ export function apiWriter(deps: { ledger: LedgerClient; secrets: Secrets }): Lis
       const started = Date.now();
       const key = await deps.secrets.require('claude_api_key');
       const client = claudeClient(deps.ledger, key, { purpose: 'listing', productId: req.productId, jobId: req.jobId });
-      const system: Anthropic.TextBlockParam[] = [{ type: 'text', text: listingRules(req.brandVoice), cache_control: { type: 'ephemeral' } }];
+      const system: Anthropic.TextBlockParam[] = [{ type: 'text', text: listingRules(req.brandVoice, req.instructions), cache_control: { type: 'ephemeral' } }];
       const content: Anthropic.ContentBlockParam[] = [];
       for (const [i, name] of req.photos.entries()) {
         const media = MEDIA[path.extname(name).toLowerCase()];
@@ -36,6 +36,11 @@ export function apiWriter(deps: { ledger: LedgerClient; secrets: Secrets }): Lis
         const data = await fs.readFile(path.join(req.dir, name), { encoding: 'base64' });
         content.push({ type: 'text', text: `Gallery image ${i}:` }, { type: 'image', source: { type: 'base64', media_type: media, data } });
       }
+      // The history changes with every product, so it stays out of the cached system block.
+      const history = historyNote(req.recentTitles);
+      if (history) content.push({ type: 'text', text: history });
+      const focus = focusNote(req.focus);
+      if (focus) content.push({ type: 'text', text: focus });
       content.push({ type: 'text', text: `Supplier data (JSON):\n${JSON.stringify(promptProduct(req.source), null, 1)}\n\nWrite the listing.` });
       const messages: Anthropic.MessageParam[] = [{ role: 'user', content }];
       if (req.repairNote) messages.push({ role: 'user', content: `A previous attempt failed validation: ${req.repairNote}. Return a corrected listing.` });

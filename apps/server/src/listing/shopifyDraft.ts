@@ -41,14 +41,22 @@ const fileName = (url: string, i: number) => `${url.split('/').pop()?.split('?')
  * Builds the productSet input from the listing, the source product and the pricing settings.
  * Everything here is local. Image URLs are passed as `originalSource` so Shopify fetches them.
  */
-export function buildDraftInput(args: { source: SourceProduct; draft: ListingDraft; settings: ImportSettings; usdPerCny: number; sourceMeta: Record<string, unknown> }): DraftPlan {
+export function buildDraftInput(args: { source: SourceProduct; draft: ListingDraft; settings: ImportSettings; usdPerCny: number; sourceMeta: Record<string, unknown>; reviewedImages?: readonly number[] }): DraftPlan {
   const { source, draft, settings, usdPerCny } = args;
   const notes: string[] = [];
 
   // Images in Claude's order, falling back to the source order. Description images only when asked.
-  const order = draft.imageOrder.filter((i, idx, all) => i < source.images.length && all.indexOf(i) === idx);
-  const gallery = (order.length ? order : source.images.map((_, i) => i)).map((i) => source.images[i]!);
+  // The writer only reads the first MAX_PHOTOS photos, so imageOrder ranks those and drops the
+  // banners among them. An image it never saw was never judged, so it is kept, in supplier
+  // order, after the ones it chose. Without that, a gallery longer than MAX_PHOTOS lost its tail.
+  const allImages = source.images.map((_, i) => i);
+  const reviewed = new Set(args.reviewedImages ?? allImages);
+  const order = draft.imageOrder.filter((i, idx, list) => i < source.images.length && list.indexOf(i) === idx);
   if (!order.length && draft.imageOrder.length) notes.push('Claude returned no valid image order; using the supplier order.');
+  const chosen = order.length ? order : allImages.filter((i) => reviewed.has(i));
+  const unseen = allImages.filter((i) => !reviewed.has(i) && !chosen.includes(i));
+  if (unseen.length) notes.push(`${unseen.length} supplier image(s) the writer did not see were kept, after the ${chosen.length} it chose.`);
+  const gallery = [...chosen, ...unseen].map((i) => source.images[i]!);
   const urls = [...gallery, ...(settings.listing.includeDescriptionImages ? source.descriptionImages : [])].filter((u, i, all) => all.indexOf(u) === i);
   const files = urls.map((url, i) => ({ originalSource: url, contentType: 'IMAGE', alt: i === 0 ? draft.title : `${draft.title} ${i + 1}`, filename: fileName(url, i) }));
 

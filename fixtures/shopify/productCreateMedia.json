@@ -1,0 +1,4 @@
+{ "data": { "productCreateMedia": { "media": [
+  { "id": "gid://shopify/MediaImage/7001", "alt": "Loafers (1:1, image 1)", "status": "UPLOADED", "image": null },
+  { "id": "gid://shopify/MediaImage/7002", "alt": "Loafers (1:1, image 2)", "status": "UPLOADED", "image": null }
+], "mediaUserErrors": [] } }, "extensions": { "cost": { "requestedQueryCost": 30, "actualQueryCost": 30, "throttleStatus": { "maximumAvailable": 2000, "currentlyAvailable": 1949, "restoreRate": 100 } } } }

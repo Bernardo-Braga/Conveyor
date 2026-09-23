@@ -29,6 +29,34 @@
       "when": 1789614114429,
       "tag": "0003_clumsy_clea",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789687616347,
+      "tag": "0004_loud_carlie_cooper",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789707163939,
+      "tag": "0005_overconfident_praxagora",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789792091122,
+      "tag": "0006_conscious_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789933743377,
+      "tag": "0007_public_mister_fear",
+      "breakpoints": true
     }
   ]
 }

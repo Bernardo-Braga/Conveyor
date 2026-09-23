@@ -1,11 +1,13 @@
+import { eq } from 'drizzle-orm';
 import { PullProductInput, type JobError } from '@conveyor/shared';
+import { products } from '../db/schema.ts';
 import { markAttention, setState } from '../products/repo.ts';
 import type { ShopifyClient } from '../shopify/client.ts';
 import { readSnapshot, readSnapshotByHandle, storeSnapshot } from '../shopify/snapshot.ts';
 import { JobStepError } from './types.ts';
 import type { JobDefinition } from './types.ts';
 
-/** "Add a product already in Shopify": one query, saved as the product's snapshot. */
+/** "Add a product already in Shopify", and the Launch tab's re-read: one query, saved as the product's snapshot. */
 export function pullProductJob(deps: { shopify: ShopifyClient }): JobDefinition<PullProductInput> {
   return {
     type: 'pull_product',
@@ -27,7 +29,9 @@ export function pullProductJob(deps: { shopify: ShopifyClient }): JobDefinition<
       {
         name: 'finish',
         async run(ctx) {
-          setState(ctx.db, ctx.productId!, 'from_shopify', { failure: null });
+          // A re-read only replaces the snapshot; a product further down the line keeps the state it is in.
+          if (ctx.input.refresh) ctx.db.update(products).set({ failure: null }).where(eq(products.id, ctx.productId!)).run();
+          else setState(ctx.db, ctx.productId!, 'from_shopify', { failure: null });
           return null;
         },
       },

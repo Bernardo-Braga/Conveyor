@@ -165,13 +165,17 @@ export function codexEngine(opts: CodexPoolOptions): ImageEngine {
         await fs.writeFile(path.join(dir, 'stderr.txt'), res.stderr).catch(() => undefined);
 
         const missing = task.slots.filter((s) => !producedIds.includes(s.creativeId));
+        // Codex exits 0 even when it gives up, so its own last line is the only explanation there is.
+        const lastMessage = (await fs.readFile(path.join(dir, 'last-message.txt'), 'utf8').catch(() => '')).trim();
+        const gaveUp = missing.length ? (lastMessage.split('\n').find((l) => l.trim().startsWith('FAILED'))?.trim().slice(0, 400) ?? null) : null;
+        if (gaveUp) events.log(`Codex stopped early: ${gaveUp}`, 'warn');
         const tail = [res.stderr, res.stdout].join('\n').slice(-4000);
         const usageLimit = looksLikeUsageLimit(tail) && missing.length > 0;
         const failed = missing.length > 0 && (res.timedOut || res.code !== 0 || producedIds.length === 0);
-        const error = res.timedOut ? `no result within ${Math.round(timeoutMs / 1000)}s` : res.code !== 0 ? `exit code ${res.code}${lastLine(res.stderr) ? `: ${lastLine(res.stderr)}` : ''}` : watcherError;
+        const error = res.timedOut ? `no result within ${Math.round(timeoutMs / 1000)}s` : res.code !== 0 ? `exit code ${res.code}${lastLine(res.stderr) ? `: ${lastLine(res.stderr)}` : ''}` : (watcherError ?? gaveUp);
         const out: TaskResult = { task, produced: producedIds, missing, failed, usageLimit, timedOut: res.timedOut, error, durationMs: Date.now() - started };
         if (opts.db && taskRow) {
-          opts.db.update(codexTasks).set({ finishedAt: new Date().toISOString(), result: { produced: producedIds, missing: missing.map((m) => m.slot), durationMs: out.durationMs, timedOut: res.timedOut, exitCode: res.code }, error: failed || usageLimit ? error : null }).where(eq(codexTasks.id, taskRow.id)).run();
+          opts.db.update(codexTasks).set({ finishedAt: new Date().toISOString(), result: { produced: producedIds, missing: missing.map((m) => m.slot), durationMs: out.durationMs, timedOut: res.timedOut, exitCode: res.code }, error: failed || usageLimit || gaveUp ? error : null }).where(eq(codexTasks.id, taskRow.id)).run();
         }
         return out;
       };
@@ -231,17 +235,24 @@ export function taskFile(args: { prompt: string; aspect: Aspect; slots: EngineSl
   if (args.edit) {
     lines.push(`${n++}. View \`${args.edit.name}\`. It is the edit target: keep everything about it except this change: ${args.edit.instruction}`);
   }
+  const many = args.slots.length > 1;
   lines.push(
-    `${n++}. Make ${args.slots.length} image${args.slots.length === 1 ? '' : 's'} with the image generation tool, one call per image, each at exactly ${w}x${h} pixels (aspect ${args.aspect}). Use this prompt for every image:`,
+    `${n++}. Make ${args.slots.length} image${many ? 's' : ''} with the image generation tool, one call per image. Ask for ${w}x${h} pixels (aspect ${args.aspect}). The tool picks its own pixel size, so any size it returns is fine as long as the shape is close to ${args.aspect}: the images are cropped and resized afterwards. Never stop, retry or report a failure because of pixel size.`,
+    '',
+    'Base prompt:',
     '',
     '```',
     args.prompt,
     '```',
     '',
-    `${n++}. After each image is generated, find the new file under your Codex home folder (usually \`generated_images\`) and copy it, unchanged, to the next name in this list, in order: ${files.join(', ')}. Create \`out/\` if needed. Use a plain copy such as \`cp\`; do not convert, resize or edit the file.`,
-    `${n}. When every file in the list exists, reply with one line per file: \`DONE <source path> -> <out path>\`.`,
+    `For each image, send the base prompt followed by that image's shot line${many ? '. Every image must be a clearly different photograph: a different camera angle, framing and pose, not the same shot with different lighting' : ''}:`,
     '',
-    'If image generation fails or is unavailable, stop and reply with one line starting with `FAILED` and the reason, quoting any limit message exactly.',
+    ...args.slots.map((s) => `- out/${outName(s)}: ${s.direction ? `Shot: ${s.direction}` : 'Shot: your choice of angle and framing.'}`),
+    '',
+    `${n++}. After each image is generated, find the new file under your Codex home folder (usually \`generated_images\`) and copy it, unchanged, to its name in the list above${many ? ', then go on to the next image' : ''}. Create \`out/\` if needed. Use a plain copy such as \`cp\`; do not convert, resize or edit the file.`,
+    `${n}. When every file in the list exists (${files.join(', ')}), reply with one line per file: \`DONE <source path> -> <out path>\`.`,
+    '',
+    'Only if the image generation tool itself fails or is unavailable, stop and reply with one line starting with `FAILED` and the reason, quoting any limit message exactly.',
     '',
   );
   return lines.join('\n');

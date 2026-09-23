@@ -9,6 +9,8 @@ export const JobType = z.enum([
   'create_draft',
   'pull_product',
   'generate_batch',
+  'shopify_media',
+  'import_shopify_photos',
   'find_interests',
   'validate_interests',
   'launch',

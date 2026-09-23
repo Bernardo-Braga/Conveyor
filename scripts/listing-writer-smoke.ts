@@ -14,9 +14,12 @@ import { createContext } from '../apps/server/src/context.ts';
 import { mapAliexpress } from '../apps/server/src/suppliers/mapAliexpress.ts';
 import { ensurePhotos } from '../apps/server/src/listing/photos.ts';
 import { WriterError } from '../apps/server/src/listing/writers/index.ts';
+import { recentTitles } from '../apps/server/src/products/repo.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE = path.join(ROOT, 'fixtures', 'rapidapi', 'aliexpress-item.json');
+/** The smoke run also proves the per-product focus reaches the writer. */
+const FOCUS = 'Lead on the material and how it wears in; write for someone buying their first pair.';
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -52,7 +55,7 @@ async function main() {
       }
       process.stdout.write('  writing… ');
       try {
-        const run = await writer.write({ dir, source, brandVoice: ctx.settings.get('import').listing.brandVoice, photos: photos.files, productId: null, jobId: null });
+        const run = await writer.write({ dir, source, brandVoice: ctx.settings.get('import').listing.brandVoice, instructions: ctx.settings.get('import').listing.instructions, focus: FOCUS, recentTitles: recentTitles(ctx.db), photos: photos.files, productId: null, jobId: null });
         console.log(`passed in ${(run.durationMs / 1000).toFixed(1)}s, ${run.attempts} attempt(s), ${run.apiRequests} API requests.`);
         console.log(`  title:      ${run.draft.title}`);
         console.log(`  type:       ${run.draft.productType}`);

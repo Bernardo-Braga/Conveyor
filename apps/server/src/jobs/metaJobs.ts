@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ApplyEditsInput, LaunchInput, ShopifySnapshot, Template, type JobError } from '@conveyor/shared';
+import type { Db } from '../db/index.ts';
 import { adSets, ads, campaignEdits, campaigns, products } from '../db/schema.ts';
 import { opError } from '../meta/client.ts';
 import { diffLive, learningWarnings, planEditOps, readLiveCampaign } from '../meta/liveEdit.ts';
@@ -11,7 +12,7 @@ import { pullInsights } from '../meta/insights.ts';
 import { approvedCreatives, buildStructure, launchCounts, planOperations, runObjectBatches, uploadImages } from '../meta/launch.ts';
 import { launchBlockers, preflight } from '../meta/preflight.ts';
 import { readState, saveState, type LaunchState } from '../meta/repo.ts';
-import { getTemplate } from '../meta/templates.ts';
+import { planCreativeIds, templateForProduct } from '../meta/plan.ts';
 import { markAttention, setState } from '../products/repo.ts';
 import type { ShopifyClient } from '../shopify/client.ts';
 import { isFresh, readSnapshot, storeSnapshot } from '../shopify/snapshot.ts';
@@ -26,6 +27,20 @@ export type LaunchJobInput = z.infer<typeof LaunchJobInput>;
  * → finish. Every ID is saved as it returns; a retry sends only the operations still missing.
  * Every object is created PAUSED. Activation is its own job, run only from a user action.
  */
+/** The product read back from Shopify: reused under ten minutes old, otherwise 1 query (PLAN.md section 3). */
+async function ensureFreshSnapshot(ctx: { db: Db; jobId: number; input: { productId: number }; log: (m: string, l?: 'info' | 'warn', r?: string | null) => void }, shopify: ShopifyClient): Promise<{ requests: number }> {
+  const row = ctx.db.select().from(products).where(eq(products.id, ctx.input.productId)).get();
+  if (!row?.shopifyProductId) throw new JobStepError('This product is not in Shopify.');
+  if (isFresh(row.snapshotAt)) {
+    ctx.log('Shopify snapshot is under 10 minutes old; reused. 0 requests.');
+    return { requests: 0 };
+  }
+  const { snapshot, requestId } = await readSnapshot(shopify, row.shopifyProductId, { productId: row.id, jobId: ctx.jobId });
+  storeSnapshot(ctx.db, row.id, snapshot);
+  ctx.log(`Read the product back from Shopify (1 query): status ${snapshot.status}.`, 'info', requestId);
+  return { requests: 1 };
+}
+
 export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): JobDefinition<LaunchJobInput> {
   return {
     type: 'launch',
@@ -34,22 +49,13 @@ export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): J
       {
         name: 'snapshot',
         async run(ctx) {
-          const row = ctx.db.select().from(products).where(eq(products.id, ctx.input.productId)).get();
-          if (!row?.shopifyProductId) throw new JobStepError('This product is not in Shopify.');
-          if (isFresh(row.snapshotAt)) {
-            ctx.log('Shopify snapshot is under 10 minutes old; reused. 0 requests.');
-            return { requests: 0 };
-          }
-          const { snapshot, requestId } = await readSnapshot(deps.shopify, row.shopifyProductId, { productId: row.id, jobId: ctx.jobId });
-          storeSnapshot(ctx.db, row.id, snapshot);
-          ctx.log(`Read the product back from Shopify (1 query): status ${snapshot.status}.`, 'info', requestId);
-          return { requests: 1 };
+          return ensureFreshSnapshot(ctx, deps.shopify);
         },
       },
       {
         name: 'interests',
         async run(ctx) {
-          const t = getTemplate(ctx.db, ctx.input.templateId);
+          const t = templateForProduct(ctx.db, ctx.input.productId, ctx.input.templateId);
           if (!t) throw new JobStepError('Template not found.');
           const setup = ctx.settings.get('adsetup');
           if (!setup.readInterestsFromNames) return { requests: 0 };
@@ -62,11 +68,11 @@ export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): J
       {
         name: 'preflight',
         async run(ctx) {
-          const t = getTemplate(ctx.db, ctx.input.templateId)!;
+          const t = templateForProduct(ctx.db, ctx.input.productId, ctx.input.templateId)!;
           const setup = ctx.settings.get('adsetup');
           const conn = ctx.settings.get('connections').meta;
           const row = ctx.db.select().from(products).where(eq(products.id, ctx.input.productId)).get()!;
-          const built = buildStructure(ctx.db, { template: t, productId: row.id, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames });
+          const built = buildStructure(ctx.db, { template: t, productId: row.id, fillRule: setup.fillRule, readInterestsFromNames: setup.readInterestsFromNames, creativeIds: planCreativeIds(ctx.db, row.id, ctx.input.templateId) });
           const { creativeRows } = built;
           let structure = built.structure;
           if (ctx.input.structure) {
@@ -78,7 +84,9 @@ export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): J
             ctx.log('Using the board-edited structure.');
           }
           for (const n of built.notes) ctx.log(n, 'warn');
-          const checks = preflight({ template: t, structure, snapshot: row.snapshot ? ShopifySnapshot.parse(row.snapshot) : null, creatives: creativeRows, pageId: conn.pageId, pixelId: conn.pixelId, adAccountId: conn.adAccountId, tokenSet: !!(await ctx.secrets.get('meta_access_token')) });
+          // Preflight only blocks on a fresh read, so a retry that resumes here more than ten minutes later reads again.
+          const snap = isFresh(row.snapshotAt) ? row : (await ensureFreshSnapshot(ctx, deps.shopify), ctx.db.select().from(products).where(eq(products.id, ctx.input.productId)).get()!);
+          const checks = preflight({ template: t, structure, snapshot: snap.snapshot ? ShopifySnapshot.parse(snap.snapshot) : null, snapshotFresh: true, creatives: creativeRows, pageId: conn.pageId, pixelId: conn.pixelId, adAccountId: conn.adAccountId, tokenSet: !!(await ctx.secrets.get('meta_access_token')) });
           const blockers = launchBlockers(checks, ctx.input.acknowledge);
           if (blockers.length) throw new JobStepError(`Launch checks failed: ${blockers.map((b) => b.message).join(' ')}`, { suggestion: 'Fix the items above, or acknowledge the warnings, then launch again.' });
 
@@ -101,8 +109,8 @@ export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): J
         async run(ctx) {
           const { campaignId } = ctx.prior.preflight as { campaignId: number };
           const state = readState(ctx.db.select().from(campaigns).where(eq(campaigns.id, campaignId)).get()!);
-          const t = getTemplate(ctx.db, ctx.input.templateId)!;
-          const { creativeRows } = buildStructure(ctx.db, { template: t, productId: ctx.input.productId, fillRule: ctx.settings.get('adsetup').fillRule, readInterestsFromNames: false });
+          const t = templateForProduct(ctx.db, ctx.input.productId, ctx.input.templateId)!;
+          const { creativeRows } = buildStructure(ctx.db, { template: t, productId: ctx.input.productId, fillRule: ctx.settings.get('adsetup').fillRule, readInterestsFromNames: false, creativeIds: planCreativeIds(ctx.db, ctx.input.productId, ctx.input.templateId) });
           const used = new Set(state.structure.adSets.flatMap((s) => s.ads.map((a) => a.creativeId)));
           const rows = creativeRows.filter((c) => used.has(c.id));
           const r = await uploadImages(deps.meta, ctx.db, state.adAccountId, rows, (p) => fs.readFile(p), { productId: ctx.input.productId, jobId: ctx.jobId });
@@ -115,7 +123,7 @@ export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): J
         async run(ctx) {
           const { campaignId } = ctx.prior.preflight as { campaignId: number };
           const { hashes } = ctx.prior.upload as { hashes: Record<string, string> };
-          const t = getTemplate(ctx.db, ctx.input.templateId)!;
+          const t = templateForProduct(ctx.db, ctx.input.productId, ctx.input.templateId)!;
           const conn = ctx.settings.get('connections').meta;
           const setup = ctx.settings.get('adsetup');
           const state = readState(ctx.db.select().from(campaigns).where(eq(campaigns.id, campaignId)).get()!);
@@ -145,6 +153,7 @@ export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): J
             }
           };
           const out = await runObjectBatches(deps.meta, ops, t.campaign.budget.mode, state.savedIds, { productId: ctx.input.productId, jobId: ctx.jobId }, onSaved);
+          if (out.recovered.length) ctx.log(`Read ${out.recovered.length} ID(s) back off the ads of the earlier attempt (1 request): ${out.recovered.join(', ')}. They are not created again.`);
           ctx.log(`${out.requests} object batch request(s); ${Object.keys(out.savedIds).length} of ${ops.length} operations have IDs.`, 'info', out.requestId);
           if (out.failed.length) {
             const first = out.failed[0]!;

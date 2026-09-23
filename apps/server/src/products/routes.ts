@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { AddToLineInput, FromHandleInput, Platform, type AddToLineResult, type ShopifySearchHit } from '@conveyor/shared';
+import { AddToLineInput, FromHandleInput, Platform, ProductFocusInput, type AddToLineResult, type ShopifySearchHit } from '@conveyor/shared';
 import type { AppContext } from '../context.ts';
 import { jobs, products } from '../db/schema.ts';
 import { JobStepError } from '../jobs/types.ts';
@@ -16,7 +16,7 @@ export function productRoutes(ctx: AppContext) {
 
   /** The input bar. A link is parsed locally; a name searches Shopify (1 query). */
   r.post('/line', async (c) => {
-    const { text } = AddToLineInput.parse(await c.req.json());
+    const { text, focus } = AddToLineInput.parse(await c.req.json());
     if (looksLikeUrl(text)) {
       let link = text;
       if (isShortLink(text)) link = (await resolveShortLink(ctx.ledger, text)) ?? text; // 1 redirect request, not RapidAPI
@@ -24,7 +24,7 @@ export function productRoutes(ctx: AppContext) {
       if (!parsed) return c.json<AddToLineResult>({ kind: 'unsupported', message: 'Only AliExpress item links and 1688 offer links are supported. Nothing was requested.' });
       const existing = ctx.db.select({ id: products.id }).from(products).where(and(eq(products.platform, parsed.platform), eq(products.itemId, parsed.itemId))).get();
       if (existing) return c.json<AddToLineResult>({ kind: 'duplicate', productId: existing.id }); // 0 requests
-      const row = ctx.db.insert(products).values({ origin: 'link', platform: parsed.platform, itemId: parsed.itemId, sourceUrl: link, state: 'importing' }).returning().get();
+      const row = ctx.db.insert(products).values({ origin: 'link', platform: parsed.platform, itemId: parsed.itemId, sourceUrl: link, state: 'importing', focus }).returning().get();
       const job = ctx.worker.enqueue('import', { productId: row.id, platform: parsed.platform, itemId: parsed.itemId, url: link, refresh: false }, row.id);
       return c.json<AddToLineResult>({ kind: 'importing', productId: row.id, jobId: job.id }, 202);
     }
@@ -72,6 +72,29 @@ export function productRoutes(ctx: AppContext) {
     if (!row.platform || !row.itemId) return c.json({ error: 'This product did not come from a supplier link.' }, 400);
     const job = ctx.worker.enqueue('import', { productId: id, platform: Platform.parse(row.platform), itemId: row.itemId, url: row.sourceUrl ?? '', refresh: true }, id);
     return c.json(job, 202);
+  });
+
+  /** Explicit re-read of the Shopify product: 1 query. The snapshot is replaced; the state is left alone. */
+  r.post('/products/:id/refresh-shopify', (c) => {
+    const id = Number(c.req.param('id'));
+    const row = ctx.db.select().from(products).where(eq(products.id, id)).get();
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    if (!row.shopifyProductId && !row.shopifyHandle) return c.json({ error: 'This product is not in Shopify yet.' }, 400);
+    const job = ctx.worker.enqueue('pull_product', { productId: id, shopifyProductId: row.shopifyProductId, handle: row.shopifyHandle, refresh: true }, id);
+    return c.json(job, 202);
+  });
+
+  /**
+   * The focus for one product's listing: a line of direction typed in the input bar, or changed
+   * here before the listing is written. Local, 0 requests.
+   */
+  r.put('/products/:id/focus', async (c) => {
+    const id = Number(c.req.param('id'));
+    const row = ctx.db.select({ id: products.id }).from(products).where(eq(products.id, id)).get();
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    const { focus } = ProductFocusInput.parse(await c.req.json());
+    ctx.db.update(products).set({ focus, updatedAt: new Date().toISOString() }).where(eq(products.id, id)).run();
+    return c.json(productDetail(ctx.db, id));
   });
 
   /** Write the listing and create the Shopify draft (2 requests), or rewrite an existing draft (2 requests). */

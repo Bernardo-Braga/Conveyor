@@ -3,9 +3,23 @@ import { JobError } from './jobs.ts';
 import { Platform, ProductState } from './product.ts';
 import { SourceProduct } from './supplier.ts';
 
-/** What the input bar sends: a link or a product name. The server decides which. */
-export const AddToLineInput = z.object({ text: z.string().trim().min(1).max(2048) });
+/**
+ * What the listing writer is told to lean on for one product: "the full-grain leather", "for
+ * commuters, not hikers". It changes with every import, so it belongs on the product, not in
+ * the brand voice under Settings.
+ */
+export const ProductFocus = z.string().trim().max(500).default('');
+
+/**
+ * What the input bar sends: a link or a product name, and the focus for this one product.
+ * The server decides which the text is; the focus rides along to the listing writer.
+ */
+export const AddToLineInput = z.object({ text: z.string().trim().min(1).max(2048), focus: ProductFocus });
 export type AddToLineInput = z.infer<typeof AddToLineInput>;
+
+/** A line or two of direction for this product's listing, set before it is imported. */
+export const ProductFocusInput = z.object({ focus: ProductFocus });
+export type ProductFocusInput = z.infer<typeof ProductFocusInput>;
 
 export const ProductView = z.object({
   id: z.number().int(),
@@ -27,6 +41,8 @@ export const ProductView = z.object({
   shopifyHandle: z.string().nullable(),
   snapshotAt: z.string().nullable(),
   failure: JobError.nullable(),
+  /** The focus the listing was (or will be) written to, empty when there is none. */
+  focus: z.string(),
   /** Listing station summary, once Claude has written a draft. */
   listing: z
     .object({
@@ -67,7 +83,7 @@ export type ShopifySearchHit = Extract<AddToLineResult, { kind: 'search' }>['res
 export const ImportJobInput = z.object({ productId: z.number().int(), platform: Platform, itemId: z.string(), url: z.string(), refresh: z.boolean().default(false) });
 export type ImportJobInput = z.infer<typeof ImportJobInput>;
 
-export const PullProductInput = z.object({ productId: z.number().int().nullable(), shopifyProductId: z.string().nullable().default(null), handle: z.string().nullable().default(null) });
+export const PullProductInput = z.object({ productId: z.number().int().nullable(), shopifyProductId: z.string().nullable().default(null), handle: z.string().nullable().default(null), /** A re-read of a product already on the Line: the snapshot is replaced, the state is left alone. */ refresh: z.boolean().default(false) });
 export const FromHandleInput = z.object({ handle: z.string().trim().min(1).max(255) });
 export type PullProductInput = z.infer<typeof PullProductInput>;
 
@@ -83,7 +99,7 @@ export const ShopifySnapshot = z.object({
   vendor: z.string(),
   onlineStoreUrl: z.string().nullable(),
   featuredImage: z.string().nullable(),
-  images: z.array(z.object({ id: z.string(), url: z.string(), altText: z.string().nullable() })),
+  images: z.array(z.object({ id: z.string(), url: z.string(), altText: z.string().nullable(), width: z.number().int().nullable().default(null), height: z.number().int().nullable().default(null) })),
   options: z.array(z.object({ name: z.string(), values: z.array(z.string()) })),
   variants: z.array(z.object({ id: z.string(), title: z.string(), sku: z.string().nullable(), priceMinor: z.number().int(), compareAtPriceMinor: z.number().int().nullable(), imageId: z.string().nullable() })),
   currency: z.string(),

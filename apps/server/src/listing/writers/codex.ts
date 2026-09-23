@@ -60,7 +60,7 @@ export function codexWriter(opts: CodexOptions = {}): ListingWriter {
 
       for (let attempt = 1; attempt <= 2; attempt++) {
         await fs.rm(replyPath, { force: true });
-        const prompt = listingPrompt(req.source, req.brandVoice, req.photos, attempt === 1 ? req.repairNote : lastProblem || req.repairNote);
+        const prompt = listingPrompt(req.source, req.brandVoice, req.photos, { focus: req.focus, instructions: req.instructions, recentTitles: req.recentTitles, repairNote: (attempt === 1 ? req.repairNote : lastProblem || req.repairNote) ?? '' });
         const res = await run('codex', codexArgs(req.dir, prompt, schemaPath, replyPath), { cwd: req.dir, env: childEnv(baseEnv), timeoutMs });
         if (res.timedOut) throw new WriterError(`Codex did not finish within ${Math.round(timeoutMs / 1000)}s.`, 'codex', false, true);
 

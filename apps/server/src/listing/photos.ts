@@ -60,3 +60,13 @@ export async function ensurePhotos(ledger: LedgerClient, source: SourceProduct, 
   }
   return out;
 }
+
+/**
+ * The gallery indexes behind `photo-3.jpg` names: the images the writer actually saw and
+ * could judge. The draft keeps every other supplier image instead of dropping it silently.
+ */
+export function photoIndexes(files: readonly string[]): number[] {
+  return files
+    .map((f) => Number.parseInt(f.replace(/^photo-/, ''), 10))
+    .filter((n) => Number.isInteger(n) && n >= 0);
+}

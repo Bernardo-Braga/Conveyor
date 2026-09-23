@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PROMPT_BODY, PROMPT_9x16_RULE, PROMPT_FIXED_RULES, ShopifySnapshot } from '@conveyor/shared';
+import { DEFAULT_PROMPT_BODY, DEFAULT_SHOTS, PROMPT_9x16_RULE, PROMPT_FIXED_RULES, ShopifySnapshot, shotFor, splitShots } from '@conveyor/shared';
 import { createApp } from '../src/app.ts';
 import { creativeBatches, creatives, products, requests } from '../src/db/schema.ts';
 import { codexEngine, planTasks, taskFile } from '../src/images/codexWorkers.ts';
+import type { RunCli } from '../src/listing/writers/types.ts';
 import { customVariables, fillPrompt, promptVariables } from '../src/images/prompts.ts';
 import { ensureReferences } from '../src/images/references.ts';
 import { exiftoolAvailable, exiftoolClean } from '../src/images/exiftool.ts';
@@ -170,6 +171,47 @@ describe('codex worker pool', () => {
     expect(t).toContain('out/07.png');
     expect(t).toContain('make the mug blue');
     expect(t).toContain('FAILED');
+  });
+
+  it('the task file never makes pixel size a reason to stop, and gives every image its own shot', () => {
+    const t = taskFile({ prompt: 'P', aspect: '1:1', slots: [{ creativeId: 1, aspect: '1:1', slot: 5, direction: 'Side profile.' }, { creativeId: 2, aspect: '1:1', slot: 6, direction: 'From above.' }], refs: [], edit: null });
+    // Live, 17 September 2026: the tool returned 1254x1254 for "exactly 1088x1088" and Codex stopped after one image.
+    expect(t).not.toMatch(/exactly \d+x\d+/);
+    expect(t).toContain('Never stop, retry or report a failure because of pixel size');
+    expect(t).toContain('- out/05.png: Shot: Side profile.');
+    expect(t).toContain('- out/06.png: Shot: From above.');
+    expect(t).toContain('clearly different photograph');
+  });
+
+  it('shots come from the template when it lists them, and from the built-in list otherwise', () => {
+    const own = splitShots('A studio photo of {{title}}.\n\nShots:\n- On a plinth\n2. Held in a hand\n\n');
+    expect(own).toEqual({ body: 'A studio photo of {{title}}.', shots: ['On a plinth', 'Held in a hand'] });
+    expect(splitShots('No list here.')).toEqual({ body: 'No list here.', shots: [] });
+    expect(shotFor(own.shots, 1)).toBe('Held in a hand');
+    expect(shotFor(own.shots, 2)).toContain('On a plinth');
+    expect(shotFor(own.shots, 2)).toContain('different pose');
+    expect(new Set(DEFAULT_SHOTS.map((_, i) => shotFor([], i))).size).toBe(DEFAULT_SHOTS.length);
+  });
+
+  it('relays the line Codex gives when it stops early', async () => {
+    const ctx = testContext();
+    const workDir = path.join(ctx.dataDir, 'w-gaveup');
+    const logs: string[] = [];
+    const run: RunCli = async (_cmd, args, o) => {
+      if (args[0] === '--version') return { code: 0, stdout: 'codex-cli 0.154.0', stderr: '', timedOut: false };
+      fs.mkdirSync(path.join(o.cwd, 'out'), { recursive: true });
+      fs.writeFileSync(path.join(o.cwd, 'out', '01.png'), MUG);
+      fs.writeFileSync(path.join(o.cwd, 'last-message.txt'), 'FAILED the tool returned an odd size');
+      return { code: 0, stdout: '', stderr: '', timedOut: false };
+    };
+    const engine = codexEngine({ workers: 1, imagesPerTask: 'format', timeLimitPerImageMs: 5_000, run, pollMs: 5 });
+    const out = await engine.generate(
+      { batchId: 1, productId: 1, workDir, referencePaths: [], prompt: 'P', slots: [{ creativeId: 1, aspect: '1:1', slot: 1 }, { creativeId: 2, aspect: '1:1', slot: 2 }] },
+      { onImage: async () => undefined, log: (m) => logs.push(m), progress: () => undefined },
+    );
+    expect(out.producedCreativeIds).toEqual([1]);
+    expect(logs.join('\n')).toContain('Codex stopped early: FAILED the tool returned an odd size');
+    await ctx.close();
   });
   void events;
 });

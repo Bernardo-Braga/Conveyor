@@ -5,6 +5,12 @@ export interface WriterRequest {
   dir: string;
   source: SourceProduct;
   brandVoice: string;
+  /** The store's standing rules for every listing, empty when there are none. */
+  instructions: string;
+  /** This product's own direction for the listing, empty when there is none. */
+  focus: string;
+  /** Titles this store has already used, newest first, so the writer does not name a product twice. */
+  recentTitles: readonly string[];
   /** Photo file names inside `dir`. */
   photos: readonly string[];
   /** Set on the second attempt, quoting what failed validation. */

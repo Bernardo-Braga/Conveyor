@@ -12,6 +12,9 @@ export const WRITER_LABELS: Record<ListingWriterId, string> = {
 /** The writer shows the model at most this many product photos, saved in the product's folder. */
 export const MAX_PHOTOS = 4;
 
+/** How many titles the store has already used are shown to the writer, so it does not name a product twice. */
+export const HISTORY_TITLES = 40;
+
 /**
  * The listing Claude writes, PLAN.md section 7. Validated strictly after the call.
  * Length limits are enforced client-side; a failure asks Claude once to fix its output.
@@ -81,5 +84,8 @@ export type ListingJobInput = z.infer<typeof ListingJobInput>;
  * Every reply is still validated with Zod: the schema is a hint, not a guarantee.
  */
 export function listingJsonSchema(): Record<string, unknown> {
-  return z.toJSONSchema(ListingWire, { target: 'draft-2020-12', io: 'output' }) as Record<string, unknown>;
+  const { $schema: _dialect, ...schema } = z.toJSONSchema(ListingWire, { target: 'draft-2020-12', io: 'output' }) as Record<string, unknown>;
+  // Claude Code 2.1.274 rejects a schema naming the 2020-12 dialect ("no schema with key or ref").
+  // Only plain keywords are used, so the dialect line carries nothing.
+  return schema;
 }

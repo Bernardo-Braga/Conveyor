@@ -4,7 +4,7 @@ import type { Db } from '../db/index.ts';
 import { creatives, productCopy, products } from '../db/schema.ts';
 import { JobStepError } from '../jobs/types.ts';
 import type { BatchOp } from './batch.ts';
-import { splitByDependencies, withSavedIds } from './batch.ts';
+import { BATCH_LIMIT, refsOf, splitByDependencies, withSavedIds } from './batch.ts';
 import { opError, type MetaClient } from './client.ts';
 import { resolveVariantInterests } from './interests.ts';
 import { adFields, adSetFields, assertPayloadRules, campaignFields, creativeFields, fillUrlParams, type PayloadNote } from './payloadRules.ts';
@@ -17,6 +17,8 @@ export interface StructureInput {
   productId: number;
   fillRule: FillRule;
   readInterestsFromNames: boolean;
+  /** The creatives chosen for this launch, in order. `null` (or absent) means every approved one. */
+  creativeIds?: number[] | null;
   now?: Date;
 }
 
@@ -30,6 +32,17 @@ export function approvedCreatives(db: Db, productId: number): CreativeRow[] {
     .sort((a, b) => a.id - b.id);
 }
 
+/**
+ * The creatives a launch fills its ads with: the chosen ones in the order they were chosen, or
+ * every approved one when nothing was chosen. Unapproved choices are kept so preflight can name
+ * them, rather than dropped, which would shrink the ad sets without saying so.
+ */
+export function launchCreativePool(db: Db, productId: number, chosen?: number[] | null): CreativeRow[] {
+  if (!chosen) return approvedCreatives(db, productId);
+  const rows = db.select().from(creatives).where(and(eq(creatives.productId, productId), eq(creatives.status, 'finished'))).all();
+  return chosen.map((id) => rows.find((r) => r.id === id)).filter((r): r is CreativeRow => !!r);
+}
+
 /** The copy for a product: its saved copy if any, else the template's example copy. */
 export function copyFor(db: Db, productId: number, t: Template, snapshot: ShopifySnapshot | null): { primaryText: string; headline: string; description: string; destinationUrl: string } {
   const saved = db.select().from(productCopy).where(eq(productCopy.productId, productId)).all().at(-1);
@@ -38,6 +51,17 @@ export function copyFor(db: Db, productId: number, t: Template, snapshot: Shopif
 }
 
 /** Fill rules (PLAN.md section 9.5). Returns creative IDs per ad set. */
+/**
+ * How many different creatives a fill rule actually consumes, which is what the Launch view asks
+ * the user to choose: the same set in every ad set needs only one ad set's worth.
+ */
+export function creativeSlots(rule: FillRule, adSetCount: number, adsPerAdSet: number): number {
+  if (rule === 'manual') return 0;
+  if (rule === 'rotate') return adSetCount * adsPerAdSet;
+  if (rule === 'one_per_adset') return adSetCount;
+  return adsPerAdSet; // one_per_ad and by_format reuse the pool in every ad set
+}
+
 export function fillCreatives(rule: FillRule, adSetNames: string[], adsPerAdSet: number, pool: { id: number; aspect: Aspect }[]): number[][] {
   if (!pool.length || rule === 'manual') return adSetNames.map(() => []);
   if (rule === 'one_per_ad') return adSetNames.map(() => pool.slice(0, adsPerAdSet).map((c) => c.id));
@@ -69,7 +93,7 @@ export function buildStructure(db: Db, input: StructureInput): { structure: Laun
   const snapshot = row.snapshot ? ShopifySnapshot.parse(row.snapshot) : null;
   const campaignName = fillPattern(t.campaign.name_pattern, { date: todayTag(now), template: t.name, campaign: '' });
   const copy = copyFor(db, productId, t, snapshot);
-  const pool = approvedCreatives(db, productId);
+  const pool = launchCreativePool(db, productId, input.creativeIds);
   if (pool.length < t.ads_per_adset) notes.push(`${pool.length} approved creative(s) for ${t.ads_per_adset} ads per ad set; each ad set gets ${Math.min(pool.length, t.ads_per_adset)}.`);
 
   const count = t.adset_count;
@@ -190,9 +214,60 @@ export async function uploadImages(client: MetaClient, db: Db, adAccountId: stri
 
 export interface ObjectBatchOutcome {
   requests: number;
+  /** IDs an earlier attempt created but never received, read back from their ads. */
+  recovered: string[];
   savedIds: Record<string, string>;
   failed: { name: string; message: string; code: number | null; subcode: number | null }[];
   requestId: string | null;
+}
+
+/** The one reference an operation's body holds in `field`, e.g. the ad set an ad is created under. */
+function refIn(op: BatchOp | undefined, field: string): string | null {
+  const v = op?.body?.[field];
+  return v == null ? null : (refsOf({ ...op!, relative_url: '', body: { [field]: v } })[0] ?? null);
+}
+
+/**
+ * Takes a parent's ID back off a child that already has one. An ad knows its campaign, ad set
+ * and creative, so one batch of reads recovers IDs an earlier attempt never received (Meta used
+ * to omit them; see `client.batch`). Nothing is created, and a retry then sends only what is
+ * genuinely missing.
+ */
+export async function recoverParentIds(client: MetaClient, ops: BatchOp[], savedIds: Record<string, string>, meta: { productId: number; jobId: number | null }): Promise<{ requests: number; ids: Record<string, string> }> {
+  const missing = new Set(ops.filter((o) => o.name && !savedIds[o.name]).map((o) => o.name!));
+  const ids: Record<string, string> = {};
+  if (!missing.size) return { requests: 0, ids };
+  const byName = new Map(ops.filter((o) => o.name).map((o) => [o.name!, o] as const));
+  const savedAds = ops.filter((o) => o.name && savedIds[o.name] && /\/ads$/.test(o.relative_url));
+  /** The names one ad can give back: its ad set, its creative, and the campaign its ad set names. */
+  const parentsOf = (ad: BatchOp): (string | null)[] => {
+    const setName = refIn(ad, 'adset_id');
+    return [setName, refIn(ad, 'creative'), refIn(byName.get(setName ?? ''), 'campaign_id')];
+  };
+  // One saved ad per missing parent is enough, and the same ad often covers several of them.
+  const sources = new Map<string, BatchOp>();
+  for (const name of missing) {
+    const child = savedAds.find((o) => parentsOf(o).includes(name));
+    if (child) sources.set(child.name!, child);
+  }
+  if (!sources.size) return { requests: 0, ids };
+
+  const list = [...sources.values()];
+  let requests = 0;
+  for (let i = 0; i < list.length; i += BATCH_LIMIT) {
+    const chunk = list.slice(i, i + BATCH_LIMIT);
+    const res = await client.batch(chunk.map((o) => ({ method: 'GET' as const, relative_url: `${savedIds[o.name!]}?fields=campaign_id,adset_id,creative{id}` })), { purpose: 'launch_recover', ...meta });
+    requests += 1;
+    res.results.forEach((r, j) => {
+      if (opError(r)) return;
+      const ad = r.body as { campaign_id?: string; adset_id?: string; creative?: { id?: string } } | null;
+      const [setName, creativeName, campaignName] = parentsOf(chunk[j]!);
+      for (const [name, id] of [[setName, ad?.adset_id], [creativeName, ad?.creative?.id], [campaignName, ad?.campaign_id]] as const) {
+        if (name && id && missing.has(name)) ids[name] = id;
+      }
+    });
+  }
+  return { requests, ids };
 }
 
 /**
@@ -202,10 +277,23 @@ export interface ObjectBatchOutcome {
  */
 export async function runObjectBatches(client: MetaClient, ops: BatchOp[], mode: 'CBO' | 'ABO', savedIds: Record<string, string>, meta: { productId: number; jobId: number | null }, onSaved: (name: string, id: string) => void): Promise<ObjectBatchOutcome> {
   const saved = { ...savedIds };
+  const recovered: string[] = [];
+  let recoveryRequests = 0;
+  if (Object.keys(saved).length) {
+    // A retry: objects the earlier attempt created but whose ID never came back are found again
+    // from their ads rather than created a second time.
+    const r = await recoverParentIds(client, ops, saved, meta);
+    recoveryRequests = r.requests;
+    for (const [name, id] of Object.entries(r.ids)) {
+      saved[name] = id;
+      recovered.push(name);
+      onSaved(name, id);
+    }
+  }
   // References to operations that already returned an ID are replaced before splitting,
   // so a resume never re-sends them and never trips the dependency check.
   const pending = withSavedIds(ops.filter((op) => !(op.name && saved[op.name])), saved);
-  let requests = 0;
+  let requests = recoveryRequests;
   let requestId: string | null = null;
   const failed: ObjectBatchOutcome['failed'] = [];
   for (const batch of splitByDependencies(pending, 50)) {
@@ -229,5 +317,5 @@ export async function runObjectBatches(client: MetaClient, ops: BatchOp[], mode:
     });
     if (failed.length) break; // later batches would reference missing IDs; the retry sends only what is left
   }
-  return { requests, savedIds: saved, failed, requestId };
+  return { requests, recovered, savedIds: saved, failed, requestId };
 }

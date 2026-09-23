@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ASPECT_LABEL, ASPECTS, type Aspect, type BatchView, type CreativeView, type ProductView, type PromptTemplateView } from '@conveyor/shared';
+import { ASPECT_LABEL, ASPECTS, ORIGIN_LABEL, type Aspect, type BatchView, type CreativeView, type ProductView, type PromptTemplateView } from '@conveyor/shared';
 import { Badge, Button, Panel, inputClass } from '../components/Panel.tsx';
+import { ShopifyPhotoPicker } from '../components/ShopifyPhotoPicker.tsx';
 import { ApiError, line, studio } from '../lib/api.ts';
 import type { LiveState } from '../lib/events.ts';
 import { formatDateTime, sentence } from '../lib/format.ts';
@@ -23,6 +24,7 @@ export function StudioView({ live }: { live: LiveState }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [fromShopify, setFromShopify] = useState(false);
 
   useEffect(() => {
     line.products().then((all) => {
@@ -48,7 +50,7 @@ export function StudioView({ live }: { live: LiveState }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
-  const jobKey = [...live.jobs.values()].filter((j) => j.type === 'generate_batch').map((j) => `${j.id}:${j.status}:${JSON.stringify(j.progress)}`).join(',');
+  const jobKey = [...live.jobs.values()].filter((j) => j.type === 'generate_batch' || j.type === 'shopify_media' || j.type === 'import_shopify_photos').map((j) => `${j.id}:${j.status}:${JSON.stringify(j.progress)}`).join(',');
   useEffect(() => {
     void refresh();
   }, [jobKey, refresh]);
@@ -59,6 +61,8 @@ export function StudioView({ live }: { live: LiveState }) {
   const all = useMemo(() => batches.flatMap((b) => b.creatives), [batches]);
   const finished = all.filter((c) => c.status === 'finished');
   const approvedCount = finished.filter((c) => c.approval === 'approved').length;
+  const toShopifyCount = finished.filter((c) => c.approval === 'approved' && !c.shopifyMediaId).length;
+  const sendingToShopify = [...live.jobs.values()].some((j) => j.type === 'shopify_media' && j.productId === productId && (j.status === 'running' || j.status === 'queued'));
 
   const act = async (fn: () => Promise<unknown>, note?: string) => {
     setBusy(true);
@@ -173,10 +177,31 @@ export function StudioView({ live }: { live: LiveState }) {
 
       {product && (
         <Panel
+          title="Use a photo from Shopify"
+          action={
+            <Button kind="quiet" onClick={() => setFromShopify((v) => !v)}>
+              {fromShopify ? 'Hide' : 'Choose photos'}
+            </Button>
+          }
+        >
+          {!fromShopify && <p className="text-sm text-ink-3">Bring the product's own Shopify photos in as creatives, to launch alongside or instead of the generated ones.</p>}
+          {fromShopify && <ShopifyPhotoPicker productId={product.id} busy={busy} onDone={refresh} />}
+        </Panel>
+      )}
+
+      {product && (
+        <Panel
           title="Review"
           action={
-            <span className="text-xs text-ink-3">
-              {finished.length} finished · {approvedCount} approved · keys: A approve, X reject, R regenerate, E edit, arrows move
+            <span className="text-xs text-ink-3 flex items-center gap-3">
+              <span>
+                {finished.length} finished · {approvedCount} approved · keys: A approve, X reject, R regenerate, E edit, arrows move
+              </span>
+              {approvedCount > 0 && (
+                <Button kind="quiet" disabled={busy || sendingToShopify || toShopifyCount === 0} title="2 Shopify requests plus one upload per image" onClick={() => act(() => studio.toShopify(product.id), `Adding ${toShopifyCount} image${toShopifyCount === 1 ? '' : 's'} to the Shopify product.`)}>
+                  {sendingToShopify ? 'Adding to Shopify' : toShopifyCount === 0 ? 'Approved images are in Shopify' : `Add ${toShopifyCount} approved to Shopify`}
+                </Button>
+              )}
             </span>
           }
         >
@@ -188,7 +213,7 @@ export function StudioView({ live }: { live: LiveState }) {
                   <span className="font-medium text-ink-2">Batch #{b.id}</span>
                   <Badge tone={b.status === 'done' ? 'green' : b.status === 'running' ? 'cobalt' : b.status === 'partial' || b.status === 'handoff' ? 'amber' : b.status === 'failed' ? 'red' : 'grey'}>{sentence(b.status)}</Badge>
                   <span>
-                    {b.finished}/{b.total} · {b.engine} · {b.apiRequests} API request{b.apiRequests === 1 ? '' : 's'} · {formatDateTime(b.createdAt)}
+                    {b.finished}/{b.total} · {ORIGIN_LABEL[b.engine]} · {b.apiRequests} API request{b.apiRequests === 1 ? '' : 's'} · {formatDateTime(b.createdAt)}
                   </span>
                   {b.replacesCreativeId && <span>· replaces #{b.replacesCreativeId}</span>}
                   {b.note && <span className="text-amber">· {b.note}</span>}
@@ -254,6 +279,11 @@ function Tile({ c, selected, onSelect, onEdit, act, busy }: { c: CreativeView; s
         </span>
         {c.approval === 'approved' && <Badge tone="green">A</Badge>}
         {c.approval === 'rejected' && <Badge tone="red">X</Badge>}
+        {c.shopifyMediaId && (
+          <span title="On the Shopify product">
+            <Badge tone="grey">S</Badge>
+          </span>
+        )}
         {c.flags.length > 0 && <Badge tone="amber">{c.flags.join(',')}</Badge>}
       </figcaption>
       {c.status === 'finished' && (

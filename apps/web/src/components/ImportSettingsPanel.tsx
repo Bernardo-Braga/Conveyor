@@ -12,6 +12,7 @@ type Form = {
   cnyMode: 'fixed' | 'daily';
   cnyFixed: string;
   brandVoice: string;
+  instructions: string;
   writer: ImportSettings['listing']['writer'];
   showPhotos: boolean;
   tag: string;
@@ -27,6 +28,7 @@ const toForm = (s: ImportSettings): Form => ({
   cnyMode: s.pricing.cnyRate.mode,
   cnyFixed: s.pricing.cnyRate.fixed,
   brandVoice: s.listing.brandVoice,
+  instructions: s.listing.instructions,
   writer: s.listing.writer,
   showPhotos: s.listing.showPhotos,
   tag: s.listing.tag,
@@ -66,7 +68,7 @@ export function ImportSettingsPanel() {
           shippingEstimateMinor: money(form.shippingEstimate),
           cnyRate: { mode: form.cnyMode, fixed: form.cnyFixed },
         },
-        listing: { ...settings.listing, brandVoice: form.brandVoice, writer: form.writer, showPhotos: form.showPhotos, tag: form.tag.trim(), includeDescriptionImages: form.includeDescriptionImages },
+        listing: { ...settings.listing, brandVoice: form.brandVoice, instructions: form.instructions, writer: form.writer, showPhotos: form.showPhotos, tag: form.tag.trim(), includeDescriptionImages: form.includeDescriptionImages },
       });
       setSettings(next);
       setForm(toForm(next));
@@ -132,9 +134,15 @@ export function ImportSettingsPanel() {
         </label>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Brand voice" hint="Given to the writer with every listing. Tone, audience, words to avoid.">
+        <Field label="Brand voice" hint="How the store sounds: tone, audience, the register titles and descriptions are written in. Titles stay within 70 characters, and descriptions use only paragraphs, lists and bold.">
           <textarea className={`${inputClass} min-h-28`} value={form.brandVoice} onChange={(e) => set('brandVoice', e.target.value)} />
         </Field>
+        <Field label="Additional instructions" hint="Standing rules the writer follows on every listing: naming conventions, words never to use, what a title must end with. Kept apart from the voice so they read as rules. They cannot override the character limits or licence an invented fact.">
+          <textarea className={`${inputClass} min-h-28`} value={form.instructions} onChange={(e) => set('instructions', e.target.value)} />
+        </Field>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 mt-4">
+        <p className="text-xs text-ink-3">The writer is also shown the titles this store has already published, so a new product is not given a name that is already in use.</p>
         <div className="space-y-4">
           <Field label="Tag" hint="Added to every product, with the platform name">
             <input className={inputClass} value={form.tag} onChange={(e) => set('tag', e.target.value)} />

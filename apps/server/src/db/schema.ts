@@ -19,6 +19,8 @@ export const products = sqliteTable(
     state: text('state').notNull().default('importing'),
     title: text('title'),
     moq: integer('moq'),
+    /** A line or two of direction for this product's listing, typed in the input bar. */
+    focus: text('focus').notNull().default(''),
     failure: text('failure', { mode: 'json' }),
     /** The normalised SourceProduct, mapped from the latest raw supplier response. */
     source: text('source', { mode: 'json' }),
@@ -188,7 +190,7 @@ export const creativeBatches = sqliteTable('creative_batches', {
   promptTemplateVersion: integer('prompt_template_version'),
   /** The exact prompt sent, after variables were filled. */
   prompt: text('prompt').notNull(),
-  engine: text('engine', { enum: ['codex', 'openai'] }).notNull(),
+  engine: text('engine', { enum: ['codex', 'openai', 'shopify'] }).notNull(),
   status: text('status').notNull().default('queued'),
   handle: text('handle'),
   formats: text('formats', { mode: 'json' }).notNull().default('[]'),
@@ -228,10 +230,14 @@ export const creatives = sqliteTable(
     flags: text('flags', { mode: 'json' }),
     error: text('error'),
     metaImageHash: text('meta_image_hash'),
+    /** Shopify MediaImage gid once the finished file is on the product. */
+    shopifyMediaId: text('shopify_media_id'),
+    /** Set when this creative was imported FROM a Shopify photo: the MediaImage it came from. */
+    sourceMediaId: text('source_media_id'),
     createdAt: createdAt(),
     finishedAt: text('finished_at'),
   },
-  (t) => [index('creatives_batch_idx').on(t.batchId), index('creatives_product_idx').on(t.productId), uniqueIndex('creatives_product_aspect_slot').on(t.productId, t.aspect, t.slot)],
+  (t) => [index('creatives_batch_idx').on(t.batchId), index('creatives_product_idx').on(t.productId), uniqueIndex('creatives_product_aspect_slot').on(t.productId, t.aspect, t.slot), uniqueIndex('creatives_product_source_media').on(t.productId, t.sourceMediaId)],
 );
 
 export const codexTasks = sqliteTable('codex_tasks', {
@@ -248,6 +254,28 @@ export const codexTasks = sqliteTable('codex_tasks', {
   result: text('result', { mode: 'json' }),
   error: text('error'),
 });
+
+/**
+ * The launch plan for one product: the template copy it is launched with, and the creatives
+ * chosen for it. Editing here never touches the template file (PLAN.md section 9.5).
+ */
+export const productLaunch = sqliteTable(
+  'product_launch',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    productId: integer('product_id').notNull().references(() => products.id),
+    /** The `templates` row this copy was taken from. */
+    templateId: integer('template_id').notNull(),
+    /** The template as edited for this product; null while it follows the template file. */
+    template: text('template', { mode: 'json' }),
+    /** Creative IDs chosen for the launch, in the order they fill the ads; null means every approved one. */
+    creativeIds: text('creative_ids', { mode: 'json' }),
+    /** This launch's own campaign name, schedule, targeting and budget (`LaunchOverrides`). */
+    overrides: text('overrides', { mode: 'json' }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex('product_launch_product_unique').on(t.productId)],
+);
 
 export const campaigns = sqliteTable('campaigns', {
   id: integer('id').primaryKey({ autoIncrement: true }),

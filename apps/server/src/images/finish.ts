@@ -29,6 +29,9 @@ export interface Finished {
   bytes: number;
   sha256: string;
   sourceFormat: DetectedFormat;
+  /** The input's own pixel size, before the crop. Null when sharp could not read it. */
+  sourceWidth: number | null;
+  sourceHeight: number | null;
 }
 
 /**
@@ -40,6 +43,7 @@ export async function finishCreative(input: Buffer, aspect: Aspect, quality = 90
   const sourceFormat = detectFormat(input);
   if (sourceFormat === 'unknown') throw new Error('The engine output is not an image format sharp can read.');
   const [width, height] = META_SIZE[aspect];
+  const source = await sharp(input, { failOn: 'error' }).metadata();
   const jpeg = await sharp(input, { failOn: 'error' })
     .rotate()
     .resize(width, height, { fit: 'cover', position: sharp.strategy.attention })
@@ -50,5 +54,5 @@ export async function finishCreative(input: Buffer, aspect: Aspect, quality = 90
   const m = await sharp(jpeg).metadata();
   if (m.width !== width || m.height !== height) throw new Error(`Wrong size: ${m.width}×${m.height}, wanted ${width}×${height}`);
   if (m.exif || m.xmp || m.iptc || m.icc) throw new Error('Metadata left in finished file');
-  return { jpeg: jpeg as FinishedJpeg, width, height, bytes: jpeg.length, sha256: createHash('sha256').update(jpeg).digest('hex'), sourceFormat };
+  return { jpeg: jpeg as FinishedJpeg, width, height, bytes: jpeg.length, sha256: createHash('sha256').update(jpeg).digest('hex'), sourceFormat, sourceWidth: source.width ?? null, sourceHeight: source.height ?? null };
 }

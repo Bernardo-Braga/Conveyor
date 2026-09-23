@@ -44,6 +44,8 @@ export const ImportSettings = z.object({
   }).prefault({}),
   listing: z.object({
     brandVoice: z.string().default(''),
+    /** Hard rules the store always wants followed: naming conventions, banned words. Kept apart from the voice so it reads as rules, not tone. */
+    instructions: z.string().default(''),
     /** Default writer. A usage limit hands off to the other local writer. */
     writer: ListingWriterId.default('claude_code'),
     /** Show the writer up to MAX_PHOTOS product photos, downloaded once into the product's folder. */
@@ -79,6 +81,10 @@ export const ImageSettings = z.object({
     stripMetadata: z.literal(true).default(true),
     /** Run exiftool on every finished file when it is installed. */
     exiftoolCheck: z.boolean().default(true),
+  }).prefault({}),
+  shopify: z.object({
+    /** Approving an image also adds it to the Shopify product (2 Admin requests per send, batched per approval). Off: Meta only, with a manual Studio action. */
+    addApproved: z.boolean().default(false),
   }).prefault({}),
 });
 export type ImageSettings = z.infer<typeof ImageSettings>;
