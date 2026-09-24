@@ -48,7 +48,7 @@ export function summarise(r: InsightRow, fetchedAt: string): AdInsights {
   };
 }
 
-/** One account-level insights query at ad level (PLAN.md section 9.8); results land on each ad row. */
+/** One account-level insights query at ad level; results land on each ad row. */
 export async function pullInsights(client: MetaClient, db: Db, adAccountId: string, meta: { jobId: number | null }): Promise<{ requests: number; updated: number; rows: number }> {
   const { data } = await client.get<{ data?: InsightRow[] }>(`${adAccountId}/insights`, { level: 'ad', fields: INSIGHT_FIELDS.join(','), date_preset: INSIGHTS_DATE_PRESET, limit: 500 }, { purpose: 'insights', ...meta });
   const fetchedAt = new Date().toISOString();

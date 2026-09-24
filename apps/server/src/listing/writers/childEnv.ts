@@ -1,6 +1,6 @@
 /**
  * Claude Code and Codex must run on the user's plan login, never on an API key
- * (PLAN.md section 7 and section 13). `ANTHROPIC_API_KEY` in particular takes
+ *. `ANTHROPIC_API_KEY` in particular takes
  * precedence over the plan login in print mode, so every key is removed from the
  * child environment before either CLI starts.
  */

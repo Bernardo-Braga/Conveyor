@@ -15,7 +15,7 @@ export interface CodexPoolOptions {
   workers: number;
   imagesPerTask: 'one' | 'format';
   timeLimitPerImageMs: number;
-  /** Stop after this many failed tasks (PLAN.md: two). */
+  /** Stop after this many failed tasks. */
   maxFailures?: number;
   run?: RunCli;
   env?: NodeJS.ProcessEnv;
@@ -43,7 +43,7 @@ interface TaskResult {
 }
 
 /**
- * The default engine (PLAN.md section 8). One Codex CLI process per task in its own folder
+ * The default engine. One Codex CLI process per task in its own folder
  * under data/workers/, using the built-in image generation tool on the ChatGPT plan. The
  * tool writes under $CODEX_HOME/generated_images and has no output path, so the task file
  * tells Codex to copy each result to out/NN.png; a watcher picks those up as they land.
@@ -91,7 +91,7 @@ export function codexEngine(opts: CodexPoolOptions): ImageEngine {
             return;
           }
         }
-        // Retry only the images that are still missing, once (CLAUDE.md hard rule 12).
+        // Retry only the images that are still missing, once.
         if (res.missing.length && !retried.has(task.index) && !stop) {
           retried.add(task.index);
           events.log(`Retrying ${res.missing.length} missing ${task.aspect} image(s) once.`);

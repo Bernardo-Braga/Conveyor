@@ -21,7 +21,7 @@ export function backupsDir(dataDir: string): string {
  * A backup is one zip: a consistent copy of the database (SQLite's online backup, not a file
  * copy, so a running server is fine), the templates folder and every product folder. Worker
  * scratch folders and earlier backups are left out. Keys live in the Keychain and are never
- * included (PLAN.md section 11).
+ * included.
  */
 export async function createBackup(sqlite: Database.Database, dataDir: string, opts: { now?: Date; ditto?: typeof execFileP } = {}): Promise<BackupInfo> {
   const now = opts.now ?? new Date();

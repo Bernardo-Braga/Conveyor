@@ -17,7 +17,7 @@ export interface StructuredRequest {
 
 /**
  * One structured run on a local writer, for jobs other than a listing: the import-profile
- * mapping and the optional creative check (PLAN.md section 7, "Other uses"). Same flags, same
+ * mapping and the optional creative check. Same flags, same
  * key stripping, same usage-limit hand-off as the listing writers.
  */
 export async function structuredRun(writer: ListingWriterId, req: StructuredRequest, opts: { run?: RunCli; timeoutMs?: number; env?: NodeJS.ProcessEnv } = {}): Promise<{ output: unknown; writer: ListingWriterId }> {

@@ -35,7 +35,7 @@ export class MetaApiError extends JobStepError {
 }
 
 /**
- * Thin fetch wrapper over the ledger (PLAN.md section 4). The token travels in the
+ * Thin fetch wrapper over the ledger. The token travels in the
  * Authorization header, never in the URL, so it never reaches the ledger. Writes go in
  * Graph batch requests; reads are single GETs. Meta's usage headers are read for backoff.
  */

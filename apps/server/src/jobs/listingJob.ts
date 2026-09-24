@@ -12,7 +12,7 @@ import type { ShopifyClient } from '../shopify/client.ts';
 import { JobStepError, type JobDefinition } from './types.ts';
 
 /**
- * Station 2 (PLAN.md section 7). Two outside API requests: none for the writer, which runs
+ * Station 2. Two outside API requests: none for the writer, which runs
  * locally on your own plan, and one `productSet` for the draft. Photos are downloaded once
  * from the supplier's image server, which costs no quota.
  *

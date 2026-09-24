@@ -7,7 +7,7 @@ import { formatDateTime, formatMoney, formatTime, sentence } from '../lib/format
 
 const SERVICES = ['rapidapi', 'shopify', 'meta', 'openai', 'claude', 'cdn', 'other'] as const;
 
-/** The Requests page (PLAN.md section 12): the ledger by day, service and product, plus the raw tail. */
+/** The Requests page: the ledger by day, service and product, plus the raw tail. */
 export function RequestsView({ live }: { live: LiveState }) {
   const [days, setDays] = useState(14);
   const [overview, setOverview] = useState<LedgerOverview | null>(null);

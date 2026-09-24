@@ -50,7 +50,7 @@ export function copyFor(db: Db, productId: number, t: Template, snapshot: Shopif
   return { primaryText: saved?.bodyText ?? t.ad.primary_text, headline: saved?.headline ?? t.ad.headline, description: saved?.description ?? t.ad.description, destinationUrl: destination };
 }
 
-/** Fill rules (PLAN.md section 9.5). Returns creative IDs per ad set. */
+/** Fill rules. Returns creative IDs per ad set. */
 /**
  * How many different creatives a fill rule actually consumes, which is what the Launch view asks
  * the user to choose: the same set in every ad set needs only one ad set's worth.
@@ -166,7 +166,7 @@ export function planOperations(p: PlanInput): { ops: BatchOp[]; notes: PayloadNo
   return { ops, notes, creativeOps: creativeNames.size };
 }
 
-/** Operation count and request count shown before launching (PLAN.md section 9.6). */
+/** Operation count and request count shown before launching. */
 export function launchCounts(structure: LaunchStructure, uniqueCreatives: number, newImages: number): { operations: number; batches: number; requests: number } {
   const ads = structure.adSets.reduce((n, s) => n + s.ads.length, 0);
   const operations = 1 + structure.adSets.length + uniqueCreatives + ads;

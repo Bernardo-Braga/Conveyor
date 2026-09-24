@@ -13,7 +13,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       // Hard rule 4: keytar is archived; keys live in the Keychain via @napi-rs/keyring.
-      'no-restricted-imports': ['error', { paths: [{ name: 'keytar', message: 'Use @napi-rs/keyring (CLAUDE.md hard rule 4).' }] }],
+      'no-restricted-imports': ['error', { paths: [{ name: 'keytar', message: 'Use @napi-rs/keyring.' }] }],
     },
   },
   {
@@ -21,14 +21,14 @@ export default tseslint.config(
     files: ['apps/server/**/*.ts', 'scripts/**/*.ts'],
     ignores: ['apps/server/src/http/ledgerClient.ts'],
     rules: {
-      'no-restricted-globals': ['error', { name: 'fetch', message: 'Outside requests go through http/ledgerClient.ts (CLAUDE.md hard rule 1).' }],
+      'no-restricted-globals': ['error', { name: 'fetch', message: 'Outside requests go through http/ledgerClient.ts.' }],
       'no-restricted-properties': [
         'error',
         { object: 'globalThis', property: 'fetch', message: 'Outside requests go through http/ledgerClient.ts.' },
         { object: 'global', property: 'fetch', message: 'Outside requests go through http/ledgerClient.ts.' },
       ],
       'no-restricted-imports': ['error', { paths: [
-        { name: 'keytar', message: 'Use @napi-rs/keyring (CLAUDE.md hard rule 4).' },
+        { name: 'keytar', message: 'Use @napi-rs/keyring.' },
         { name: 'undici', message: 'Outside requests go through http/ledgerClient.ts.' },
         { name: 'node-fetch', message: 'Outside requests go through http/ledgerClient.ts.' },
         { name: 'axios', message: 'Outside requests go through http/ledgerClient.ts.' },
@@ -44,8 +44,8 @@ export default tseslint.config(
     files: ['apps/server/**/*.ts', 'scripts/**/*.ts'],
     rules: {
       'no-restricted-syntax': ['error',
-        { selector: "CallExpression[callee.name='exec']", message: 'Use execFile, never a shell (CLAUDE.md hard rule 7).' },
-        { selector: "CallExpression[callee.name='execSync']", message: 'Use execFile, never a shell (CLAUDE.md hard rule 7).' },
+        { selector: "CallExpression[callee.name='exec']", message: 'Use execFile, never a shell.' },
+        { selector: "CallExpression[callee.name='execSync']", message: 'Use execFile, never a shell.' },
       ],
     },
   },

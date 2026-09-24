@@ -115,7 +115,7 @@ export interface TemplateEditorProps {
 
 /**
  * Every lever of the template, in the other tool's layout: a structure summary, then Campaign,
- * Ad set, Ad and per-ad-set rows. Fields not shown here pass through untouched (PLAN.md 9.1).
+ * Ad set, Ad and per-ad-set rows. Fields not shown here pass through untouched.
  */
 export function TemplateEditor({ doc, onChange, note, showJson = true }: TemplateEditorProps) {
   const [tab, setTab] = useState<'campaign' | 'adset' | 'ad' | 'variants' | 'json'>('campaign');

@@ -573,7 +573,7 @@ function copiesFor(structure: LaunchStructure) {
   return [...seen.values()];
 }
 
-/** Editing a live campaign (PLAN.md section 9.7): one read, a change list, one batch. */
+/** Editing a live campaign: one read, a change list, one batch. */
 function LiveEditor({ campaign, creatives, copies, busy, act, running }: { campaign: CampaignView; creatives: CreativeView[]; copies: ReturnType<typeof copiesFor>; busy: boolean; act: (fn: () => Promise<unknown>, note?: string) => Promise<void>; running: boolean }) {
   const [open, setOpen] = useState(false);
   const [live, setLive] = useState<LiveCampaign | null>(null);

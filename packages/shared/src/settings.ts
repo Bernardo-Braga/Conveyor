@@ -21,13 +21,13 @@ export const ConnectionSettings = z.object({
     pageId: z.string().trim().regex(/^\d*$/).default(''),
     instagramUserId: z.string().trim().regex(/^\d*$/).default(''),
     pixelId: z.string().trim().regex(/^\d*$/).default(''),
-    /** Test ad account for phase 6, `act_…` */
+    /** Test ad account for `pnpm meta:test-launch`, `act_…` */
     testAdAccountId: z.string().trim().regex(/^(act_\d+)?$/, 'Use the act_123 form').default(''),
   }).prefault({}),
 });
 export type ConnectionSettings = z.infer<typeof ConnectionSettings>;
 
-/** Import settings, PLAN.md section 10. Money in minor units; the UI formats currency. */
+/** Import settings. Money in minor units; the UI formats currency. */
 export const ImportSettings = z.object({
   quotaPauseThreshold: z.number().int().min(0).default(50),
   pricing: z.object({
@@ -58,7 +58,7 @@ export const ImportSettings = z.object({
 export type ImportSettings = z.infer<typeof ImportSettings>;
 
 /** Every settings section has a name and a schema. Later phases add sections here. */
-/** Image engine settings, PLAN.md section 10. */
+/** Image engine settings. */
 export const ImageSettings = z.object({
   engine: ImageEngineId.default('codex'),
   codex: z.object({

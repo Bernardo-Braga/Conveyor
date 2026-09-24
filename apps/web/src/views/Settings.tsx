@@ -236,7 +236,7 @@ function ConnectionSettingsForm({ value, onSaved }: { value: ConnectionSettings;
         <Field label="Pixel ID">
           <input className={inputClass} value={form.meta.pixelId} onChange={(e) => set('meta', 'pixelId', e.target.value)} />
         </Field>
-        <Field label="Test ad account ID" hint="Used by the phase 6 launch test only">
+        <Field label="Test ad account ID" hint="Used only by pnpm meta:test-launch">
           <input className={inputClass} value={form.meta.testAdAccountId} onChange={(e) => set('meta', 'testAdAccountId', e.target.value)} />
         </Field>
       </div>

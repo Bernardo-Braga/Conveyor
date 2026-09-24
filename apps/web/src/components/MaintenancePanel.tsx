@@ -5,7 +5,7 @@ import { Badge, Button, Panel } from './Panel.tsx';
 
 const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1)} MB`;
 
-/** Backups and start at login (PLAN.md section 14, phase 8). */
+/** Backups and start at login. */
 export function MaintenancePanel() {
   const [backups, setBackups] = useState<{ dir: string; backups: BackupInfo[] } | null>(null);
   const [agent, setAgent] = useState<AgentStatus | null>(null);

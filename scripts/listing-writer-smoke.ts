@@ -1,5 +1,5 @@
 /**
- * Listing writer smoke test (PLAN.md section 7, phase 3 "Confirm").
+ * Listing writer smoke test.
  *
  * Manual, run by the user: `pnpm writer:smoke [--writer claude_code|codex|both]`.
  * It writes a listing for the captured AliExpress fixture with the real CLIs, on your own

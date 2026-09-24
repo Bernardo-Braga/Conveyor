@@ -37,7 +37,7 @@ export interface WriterOutcome extends WriterRun {
 
 /**
  * Runs the preferred writer and, if it reports a usage limit, hands the work to the next
- * available one (PLAN.md section 7). Only a usage limit hands off: a validation failure or a
+ * available one. Only a usage limit hands off: a validation failure or a
  * crash is that writer's own error, so the same problem is not paid for twice.
  */
 export async function runListingWriter(

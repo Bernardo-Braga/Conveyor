@@ -44,7 +44,7 @@ export function budgetFields(b: Budget): Record<string, unknown> {
 }
 
 /**
- * Campaign (PLAN.md section 9.4).
+ * Campaign.
  * CBO: the campaign carries the budget and bid strategy; no sharing field.
  * ABO: no budget, no bid strategy, and always `is_adset_budget_sharing_enabled: false`.
  */
@@ -116,7 +116,7 @@ export interface TargetingInput {
 }
 
 /**
- * Targeting (PLAN.md sections 9.2 and 9.4). `targeting_automation.advantage_audience` is always
+ * Targeting. `targeting_automation.advantage_audience` is always
  * explicit. When it is 1: `age_min` must be 18–25, `age_max` is not sent, a narrower band goes as
  * an `age_range` suggestion, and gender is a suggestion (flagged, still sent). Empty flexible_spec
  * groups are removed.
@@ -248,7 +248,7 @@ export function adFields(name: string, adSetRef: string, creativeRef: string): R
 }
 
 /**
- * The last lock before anything is sent (CLAUDE.md hard rule 6). Throws on any payload that
+ * The last lock before anything is sent. Throws on any payload that
  * breaks the budget-mode, sharing, status, Advantage+ audience or placement rules.
  */
 export function assertPayloadRules(ops: BatchOp[], mode: BudgetMode): void {

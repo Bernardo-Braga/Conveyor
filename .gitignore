@@ -25,3 +25,9 @@ output/
 
 # Personal launcher
 /start.sh
+
+# Private build notes, kept locally
+/Plan.md
+/CLAUDE.md
+/AGENTS.md
+/META-API-HANDOFF.md

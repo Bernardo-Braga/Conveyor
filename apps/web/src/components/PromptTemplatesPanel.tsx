@@ -5,7 +5,7 @@ import { Badge, Button, Field, Panel, inputClass } from './Panel.tsx';
 
 type Draft = { id: number | null; name: string; body: string; formats: Aspect[]; countPerFormat: string; referenceRule: ReferenceRule; isDefault: boolean };
 
-/** Image prompts, PLAN.md section 10: versioned bodies with variable chips. */
+/** Image prompts: versioned bodies with variable chips. */
 export function PromptTemplatesPanel() {
   const [list, setList] = useState<PromptTemplateView[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);

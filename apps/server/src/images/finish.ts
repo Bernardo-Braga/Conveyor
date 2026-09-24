@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { META_SIZE, type Aspect } from '@conveyor/shared';
 
 /**
- * The only type the Meta upload accepts (CLAUDE.md hard rule 7). A Buffer becomes one
+ * The only type the Meta upload accepts. A Buffer becomes one
  * only by passing through `finishCreative`, which re-encodes pixels and nothing else.
  */
 export type FinishedJpeg = Buffer & { readonly __brand: 'FinishedJpeg' };
@@ -35,7 +35,7 @@ export interface Finished {
 }
 
 /**
- * PLAN.md section 8: rotate, crop to the Meta frame with attention-based placement, flatten
+ * Rotate, crop to the Meta frame with attention-based placement, flatten
  * onto white, encode JPEG at the given quality with 4:4:4 chroma. No `keepMetadata()`, so
  * EXIF, XMP, IPTC, ICC and C2PA are all gone. Verified again on the output before it is returned.
  */

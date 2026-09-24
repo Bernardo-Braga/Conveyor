@@ -14,7 +14,7 @@ export const ConnectionTestResult = z.object({
   detail: z.string(),
   checkedAt: z.string(),
   requestId: z.string().nullable(),
-  /** Requests this test made. Confirms the budget in PLAN.md section 3. */
+  /** Requests this test made. */
   requests: z.number().int(),
 });
 export type ConnectionTestResult = z.infer<typeof ConnectionTestResult>;

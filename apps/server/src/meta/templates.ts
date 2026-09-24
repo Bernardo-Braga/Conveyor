@@ -9,7 +9,7 @@ export function parseTemplate(raw: unknown): Template {
   return Template.parse(dropTokenKeys(raw));
 }
 
-/** Is this the other tool's format? (PLAN.md section 9.2, detection step 1.) */
+/** Is this the other tool's format? */
 export function looksLikeTemplate(raw: unknown): boolean {
   const o = raw as Record<string, unknown> | null;
   return !!o && typeof o === 'object' && Array.isArray(o.adset_variants) && 'ads_per_adset' in o && typeof (o.campaign as { budget?: { mode?: unknown } } | undefined)?.budget?.mode === 'string';
@@ -40,7 +40,7 @@ export function toTemplateView(r: Row, defaultId: number | null): TemplateView {
   });
 }
 
-/** Re-importing the same `id` updates the stored template (CLAUDE.md hard rule 8). */
+/** Re-importing the same `id` updates the stored template. */
 export function storeTemplate(db: Db, t: Template, source: string): Row {
   const now = new Date().toISOString();
   const existing = db.select().from(templates).where(eq(templates.templateId, t.id)).get();
@@ -65,7 +65,7 @@ export function exportForOtherTool(t: Template): Record<string, unknown> {
   return rest;
 }
 
-/** Name patterns, PLAN.md section 9.1. */
+/** Name patterns. */
 export function fillPattern(pattern: string, vars: { date?: string; template?: string; campaign?: string; variation?: string; creative_filename?: string }): string {
   return pattern.replace(/\{\{\s*(date|template|campaign|variation|creative_filename)\s*\}\}/g, (_, k: string) => vars[k as keyof typeof vars] ?? '').replace(/\s+/g, ' ').trim();
 }

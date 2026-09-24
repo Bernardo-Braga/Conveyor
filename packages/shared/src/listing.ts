@@ -16,7 +16,7 @@ export const MAX_PHOTOS = 4;
 export const HISTORY_TITLES = 40;
 
 /**
- * The listing Claude writes, PLAN.md section 7. Validated strictly after the call.
+ * The listing Claude writes. Validated strictly after the call.
  * Length limits are enforced client-side; a failure asks Claude once to fix its output.
  */
 export const ListingDraft = z.object({

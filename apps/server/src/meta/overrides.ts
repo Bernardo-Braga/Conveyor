@@ -2,7 +2,7 @@ import { NO_OVERRIDES, type LaunchOverrides, type Template } from '@conveyor/sha
 import { fillPattern, todayTag } from './templates.ts';
 
 /**
- * The launch settings (PLAN.md section 9.5a). A template describes a way of running ads; the
+ * The launch settings. A template describes a way of running ads; the
  * handful of things that change every time — the campaign's name, when it starts, who it is
  * for and what it spends — are kept with the product and laid over the template here, so the
  * template file and the product's copy of it are left alone.

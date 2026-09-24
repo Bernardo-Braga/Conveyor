@@ -1,5 +1,5 @@
 /**
- * Meta test launch (PLAN.md section 9, phase 6 "Done when").
+ * Meta test launch.
  *
  * Manual, run by the user: `pnpm meta:test-launch [--template ashworth|whitcombe|both] [--keep] [--dry-run]`.
  * `--dry-run` plans everything, asserts the payload rules and prints the counts with 0 requests.

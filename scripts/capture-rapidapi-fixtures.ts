@@ -1,5 +1,5 @@
 /**
- * Capture one real DataHub response per platform (PLAN.md section 6, phase 2).
+ * Capture one real DataHub response per platform.
  *
  * Manual, run by the user: `pnpm capture:fixtures <aliexpress link> <1688 link>`.
  * Exactly 2 RapidAPI requests. Both go through the ledger and the raw bodies are saved

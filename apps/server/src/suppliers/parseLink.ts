@@ -10,7 +10,7 @@ export const HOSTS = {
 const SHORT_HOSTS = /^(a|s\.click|star)\.aliexpress\.[a-z.]+$/;
 
 /**
- * Platform and item ID from a link, worked out locally (PLAN.md section 6).
+ * Platform and item ID from a link, worked out locally.
  * Returns null for anything Conveyor does not understand, so nothing is fetched.
  */
 export function parseLink(raw: string): ParsedLink | null {

@@ -12,7 +12,7 @@ interface AuthStatus {
 
 /**
  * Local check, no network request of our own. It must fail when a run would not use the
- * plan login (PLAN.md section 7), so it reads `claude auth status` with the same stripped
+ * plan login, so it reads `claude auth status` with the same stripped
  * environment the writer uses and rejects any auth method other than the Claude plan.
  */
 export const testClaudeCode: ConnectionTester = async () => {

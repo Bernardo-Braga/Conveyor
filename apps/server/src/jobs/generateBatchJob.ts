@@ -18,7 +18,7 @@ import { JobStepError, type JobDefinition } from './types.ts';
 const EXT: Record<string, string> = { png: '.png', jpeg: '.jpg', webp: '.webp', gif: '.gif', heif: '.heic', tiff: '.tif', unknown: '.bin' };
 
 /**
- * Station 3 (PLAN.md section 8). One API request at most: the Shopify snapshot, and only when
+ * Station 3. One API request at most: the Shopify snapshot, and only when
  * the last one is 10 minutes old or older. Codex makes no API requests. Steps checkpoint, so a
  * retry regenerates only slots that are still missing.
  *

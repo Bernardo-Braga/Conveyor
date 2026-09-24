@@ -4,7 +4,7 @@ import type { Db } from '../db/index.ts';
 import { products } from '../db/schema.ts';
 import { toMinor, type ShopifyClient } from './client.ts';
 
-/** Snapshots younger than this are reused (PLAN.md section 3). */
+/** Snapshots younger than this are reused. */
 export const FRESH_MS = 10 * 60 * 1000;
 
 const PRODUCT_FIELDS = `

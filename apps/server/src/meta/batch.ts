@@ -1,4 +1,4 @@
-/** One operation in a Graph batch request (PLAN.md section 9.6). */
+/** One operation in a Graph batch request. */
 export interface BatchOp {
   method: 'GET' | 'POST' | 'DELETE';
   relative_url: string;

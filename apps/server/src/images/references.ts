@@ -26,8 +26,7 @@ export function referenceImageIds(snapshot: ShopifySnapshot, rule: ReferenceRule
 
 /**
  * Downloads reference images once per product into `<productDir>/references/`, keyed by the
- * Shopify image ID in `reference_cache` (PLAN.md section 3: "Reference images are downloaded
- * once per product"). These are Shopify CDN reads, not Admin API queries.
+ * Shopify image ID in `reference_cache`. These are Shopify CDN reads, not Admin API queries.
  */
 export async function ensureReferences(deps: { db: Db; ledger: LedgerClient }, productId: number, snapshot: ShopifySnapshot, rule: ReferenceRule, productDir: string, meta: { jobId: number | null }): Promise<ReferenceSet> {
   const out: ReferenceSet = { paths: [], downloaded: 0, reused: 0, skipped: [] };

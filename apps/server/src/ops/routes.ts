@@ -9,7 +9,7 @@ import { agentPaths, agentStatus, installAgent, uninstallAgent } from './launchA
 export function opsRoutes(ctx: AppContext) {
   const r = new Hono();
 
-  /** The Requests page (PLAN.md section 12): the ledger by day and service, by product, and the raw tail. */
+  /** The Requests page: the ledger by day and service, by product, and the raw tail. */
   r.get('/ledger/overview', (c) => {
     const days = Math.min(90, Math.max(1, Number(c.req.query('days') ?? 14)));
     const since = new Date(Date.now() - days * 86_400_000).toISOString();

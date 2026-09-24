@@ -27,7 +27,7 @@ interface Planned {
 
 /**
  * Brings photos that are already on the Shopify product in as creatives, so a launch can use the
- * store's own photography instead of only generated images (PLAN.md section 8).
+ * store's own photography instead of only generated images.
  *
  * At most one API request: the Shopify snapshot, and only when the last one is 10 minutes old or
  * older. Each photo is one Shopify CDN download, which costs no Admin quota. Every photo goes

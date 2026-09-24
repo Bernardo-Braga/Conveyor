@@ -19,7 +19,7 @@ export const TESTERS: Partial<Record<ConnectionService, ConnectionTester>> = {
   shopify: testShopify,
   meta: testMeta,
   codex: testCodex,
-  // rapidapi: no test. Its status comes from the last import (PLAN.md section 10).
+  // rapidapi: no test. Its status comes from the last import.
 };
 
 /** What must be set before a test can run. The plan-based CLIs need no key at all. */

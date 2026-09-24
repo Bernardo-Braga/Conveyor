@@ -28,7 +28,7 @@ export interface OpenAiEngineDeps {
 }
 
 /**
- * The backup engine (PLAN.md section 8): `gpt-image-2` through the images edit endpoint with
+ * The backup engine: `gpt-image-2` through the images edit endpoint with
  * the reference images attached, one request per format asking for all of that format's images,
  * PNG output so compression happens once, sizes with edges in multiples of 16. Usage from each
  * response goes to the cost ledger. If the API refuses `n` above 1, the format is retried one

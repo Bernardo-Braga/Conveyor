@@ -13,7 +13,7 @@ export interface PreflightInput {
   tokenSet: boolean;
 }
 
-/** Launch checks (PLAN.md section 9.5). `block` stops the launch; `warn` can be acknowledged. */
+/** Launch checks. `block` stops the launch; `warn` can be acknowledged. */
 export function preflight(i: PreflightInput): PreflightCheck[] {
   const checks: PreflightCheck[] = [];
   const add = (id: string, level: PreflightCheck['level'], message: string, acknowledgeable = false) => checks.push({ id, level, message, acknowledgeable });

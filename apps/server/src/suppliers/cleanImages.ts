@@ -1,5 +1,5 @@
 /**
- * Image link cleaning, PLAN.md section 6. String work only: no request is made.
+ * Image link cleaning. String work only: no request is made.
  * - add `https:` to scheme-less links
  * - strip size suffixes (`_350x350xz.jpg`, `_50x50.jpg_`) and WebP suffixes (`.jpg_.webp`, `.png_.avif`)
  * - remove duplicates, keep order

@@ -1,6 +1,6 @@
 /**
  * Pinned versions of every outside service and tool Conveyor talks to.
- * Change these deliberately, with a live check, and update PLAN.md.
+ * Change these deliberately, with a live check and update this file.
  */
 export const VERSIONS = {
   /** Meta Marketing API (Graph) version used for every Meta request. */

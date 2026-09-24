@@ -124,7 +124,7 @@ export const ConveyorExtras = z
   })
   .passthrough();
 
-/** The other tool's template, exactly as exported (PLAN.md section 9.1). Unknown fields pass through. */
+/** The other tool's template, exactly as exported. Unknown fields pass through. */
 export const Template = z
   .object({
     id: z.string(),
@@ -178,7 +178,7 @@ export const TemplateDuplicate = z.object({ name: z.string().trim().min(1).max(8
 export const TemplateFolder = z.object({ dir: z.string(), files: z.number().int() });
 export type TemplateView = z.infer<typeof TemplateView>;
 
-/** What an ad set name says about its interest (PLAN.md section 9.3). */
+/** What an ad set name says about its interest. */
 export const InterestKind = z.enum(['none', 'broad', 'placeholder', 'lookup', 'file', 'picked', 'unmatched']);
 export type InterestKind = z.infer<typeof InterestKind>;
 
@@ -238,7 +238,7 @@ export const LaunchPreview = z.object({
 export type LaunchPreview = z.infer<typeof LaunchPreview>;
 
 /**
- * The few settings that change with every launch (PLAN.md section 9.5a): the campaign's name,
+ * The few settings that change with every launch: the campaign's name,
  * when it starts and ends, who it targets and what it spends. They are kept with the product's
  * launch plan rather than in the template, and are laid over the template when the launch is
  * built, so the same template can run a hundred products without ever being edited.
@@ -336,7 +336,7 @@ export type LaunchInput = z.infer<typeof LaunchInput>;
 /** "Save this board as a template": a new template file with the board's shape under x_conveyor. */
 export const BoardSaveInput = z.object({ templateId: z.number().int(), name: z.string().trim().min(1).max(80), structure: LaunchStructure });
 
-/** What the importer answers (PLAN.md section 9.2). */
+/** What the importer answers. */
 export const ImportOutcome = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('imported'), format: z.enum(['template', 'graph', 'profile']), template: TemplateView, notes: z.array(z.string()) }),
   z.object({
@@ -353,7 +353,7 @@ export const ImportOutcome = z.discriminatedUnion('kind', [
 export type ImportOutcome = z.infer<typeof ImportOutcome>;
 export const ImportConfirm = z.object({ signature: z.string(), mapping: z.record(z.string(), z.object({ from: z.string().nullable(), value: z.unknown().optional(), unit: z.enum(['major', 'minor']).optional() })), raw: z.record(z.string(), z.unknown()) });
 
-/** Live campaign state as read from Meta in one request (PLAN.md section 9.7). */
+/** Live campaign state as read from Meta in one request. */
 export const LiveAd = z.object({ id: z.string(), name: z.string(), status: z.string(), creativeId: z.string().nullable() });
 export const LiveAdSet = z.object({
   id: z.string(),
@@ -424,7 +424,7 @@ export type CampaignView = z.infer<typeof CampaignView>;
 
 export const InterestPick = z.object({ label: z.string().min(1), interest: InterestRef });
 
-/** Ad setup settings, the Conveyor-side defaults around a template (PLAN.md section 10). */
+/** Ad setup settings, the Conveyor-side defaults around a template. */
 export const AdSetupSettings = z.object({
   defaultTemplateId: z.number().int().nullable().default(null),
   fillRule: FillRule.default('one_per_ad'),

@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { LedgerClient, LedgerMeta } from '../http/ledgerClient.ts';
 
 /**
- * The official SDK for request shapes, with the ledger as its transport (CLAUDE.md hard rule 1).
+ * The official SDK for request shapes, with the ledger as its transport.
  * The SDK's own retries are off; the ledger records every attempt and the job retries by step.
  */
 export function claudeClient(ledger: LedgerClient, apiKey: string, meta: Omit<LedgerMeta, 'service'>): Anthropic {

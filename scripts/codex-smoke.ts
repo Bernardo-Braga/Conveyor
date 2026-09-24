@@ -1,5 +1,5 @@
 /**
- * Codex smoke test (PLAN.md section 8, phase 1 "Confirm").
+ * Codex smoke test.
  *
  * Manual, run by the user: `pnpm codex:smoke [--runs 3] [--timeout 240]`.
  * It uses the ChatGPT plan through the Codex CLI and makes no API requests of its own.

@@ -8,7 +8,7 @@ import type { BatchOp } from './batch.ts';
 const BROAD = /^broad(\s*\d+)?$/i;
 const PLACEHOLDER = /^interest(\s*\d+)?$/i;
 
-/** One interest per ad set name (PLAN.md section 9.3). */
+/** One interest per ad set name. */
 export function interestFromName(name: string): { kind: 'none' } | { kind: 'broad' } | { kind: 'placeholder'; label: string } | { kind: 'lookup'; label: string } {
   const [prefix, ...rest] = name.split(/\s[-–]\s/);
   void prefix;

@@ -1,7 +1,7 @@
 import type { ImportSettings, Pricing, SourceProduct } from '@conveyor/shared';
 
 /**
- * Pure arithmetic, PLAN.md section 7. Money in minor units.
+ * Pure arithmetic. Money in minor units.
  * Landed cost = supplier cost (converted to USD for 1688) + agent fee + shipping estimate.
  * Price = landed cost × multiplier, rounded up to .99, then raised to keep the minimum margin.
  * Compare-at = price + markup %, also ending in .99.

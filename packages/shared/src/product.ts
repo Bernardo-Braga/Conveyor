@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Product states, PLAN.md section 5. `from_shopify` is equivalent to `editing_in_shopify`. */
+/** Product states. `from_shopify` is equivalent to `editing_in_shopify`. */
 export const PRODUCT_STATES = [
   'importing',
   'writing_listing',

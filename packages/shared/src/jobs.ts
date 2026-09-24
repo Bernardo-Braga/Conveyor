@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Job types, PLAN.md section 12. Phase 1 registers only `connection_test`; later phases add the rest. */
+/** Job types. Phase 1 registers only `connection_test`; later phases add the rest. */
 export const JobType = z.enum([
   'connection_test',
   'import',

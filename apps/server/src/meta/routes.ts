@@ -51,7 +51,7 @@ export function metaRoutes(ctx: AppContext) {
   };
 
   /**
-   * Import (PLAN.md section 9.2): the other tool's format is written straight to the folder; plain
+   * Import: the other tool's format is written straight to the folder; plain
    * Meta API fields are converted; anything else gets a proposed mapping from one writer run,
    * which becomes an import profile once confirmed, so later files of that shape cost nothing.
    */
@@ -282,7 +282,7 @@ export function metaRoutes(ctx: AppContext) {
     return c.json(out);
   });
 
-  // Live editing (PLAN.md section 9.7): one read, a change list, one batch.
+  // Live editing: one read, a change list, one batch.
   r.post('/campaigns/:id/read', (c) => {
     const id = Number(c.req.param('id'));
     const row = ctx.db.select().from(campaigns).where(eq(campaigns.id, id)).get();

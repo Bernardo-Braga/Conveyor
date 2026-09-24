@@ -16,7 +16,7 @@ export interface BoardProps {
 }
 
 /**
- * The structure editor (PLAN.md section 9.5): one column per ad set, one card per ad.
+ * The structure editor: one column per ad set, one card per ad.
  * Everything here is local until "Create campaign" or "Save as template".
  */
 export function Board({ structure, mode, creatives, copies, onChange, onRename, busy }: BoardProps) {

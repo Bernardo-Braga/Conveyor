@@ -9,7 +9,7 @@ import { latestRaw } from '../suppliers/supplierRaw.ts';
 import { JobStepError, type JobDefinition } from './types.ts';
 
 /**
- * Station 1 (PLAN.md section 6). Parsing and the duplicate check happen before the job
+ * Station 1. Parsing and the duplicate check happen before the job
  * exists (in the route, 0 requests). The job: quota → fetch (saves raw first) → map → finish.
  * Only `fetch` leaves the machine, and it reuses a saved response unless `refresh` is set.
  */

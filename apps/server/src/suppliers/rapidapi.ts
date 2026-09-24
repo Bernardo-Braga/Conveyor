@@ -52,7 +52,7 @@ const ENDPOINTS: Record<Platform, readonly string[]> = {
 type Attempt = { ok: true; result: FetchItemResult } | { ok: false; error: JobStepError; noResults: boolean };
 
 /**
- * One RapidAPI request per product (PLAN.md section 6, step 4), plus one more only when
+ * One RapidAPI request per product, plus one more only when
  * AliExpress answers 205 and the backup endpoint is tried.
  * Retried at most once, only for network errors, 429 or 5xx (the ledger enforces that).
  * The raw body is saved before any parsing, for every endpoint tried.

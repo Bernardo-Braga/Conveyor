@@ -5,7 +5,7 @@ const MAX_OUTPUT = 32 * 1024 * 1024;
 
 /**
  * Runs a local CLI. No shell, so nothing in a product title can be interpreted as a command
- * (CLAUDE.md hard rule 7).
+ *.
  *
  * stdin is ignored on purpose: `codex exec` waits on stdin whenever it is an open pipe, even
  * with a prompt argument, and hangs for the whole timeout. Confirmed 16 September 2026.

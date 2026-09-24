@@ -1,5 +1,5 @@
 /**
- * The one HTTP path (CLAUDE.md hard rule 1). Every outside request goes through
+ * The one HTTP path. Every outside request goes through
  * `LedgerClient.fetch`, which records service, purpose, product, job, status,
  * duration and quota remaining. It never records headers or bodies.
  *
@@ -23,7 +23,7 @@ export interface LedgerRequestOptions {
   timeoutMs?: number;
   /**
    * Extra attempts after the first, only for network errors, 429 or 5xx.
-   * Default 0. Supplier calls use 1 (CLAUDE.md hard rule 3).
+   * Default 0. Supplier calls use 1.
    */
   retries?: number;
   /** Wait before a retry. Default 1 s, doubled each time. */

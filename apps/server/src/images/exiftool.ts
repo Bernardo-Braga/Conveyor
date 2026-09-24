@@ -20,7 +20,7 @@ export async function exiftoolAvailable(): Promise<boolean> {
   return available;
 }
 
-/** Runs `exiftool -json -G1 -a` with execFile, never a shell (CLAUDE.md hard rule 7). */
+/** Runs `exiftool -json -G1 -a` with execFile, never a shell. */
 export async function exiftoolGroups(filePath: string): Promise<string[]> {
   const { stdout } = await execFileP('exiftool', ['-json', '-G1', '-a', filePath], { timeout: 30_000, maxBuffer: 8 * 1024 * 1024 });
   const first = (JSON.parse(stdout) as Record<string, unknown>[])[0] ?? {};

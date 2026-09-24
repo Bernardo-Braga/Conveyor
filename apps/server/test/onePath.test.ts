@@ -16,7 +16,7 @@ function walk(dir: string): string[] {
 }
 
 /**
- * CLAUDE.md hard rule 1: every outside request goes through http/ledgerClient.ts.
+ * Every outside request goes through http/ledgerClient.ts.
  * ESLint enforces this too; this test is the second lock on the door.
  */
 describe('one HTTP path', () => {

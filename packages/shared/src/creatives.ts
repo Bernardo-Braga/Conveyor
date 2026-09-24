@@ -5,7 +5,7 @@ export const Aspect = z.enum(['1:1', '4:5', '9:16']);
 export type Aspect = z.infer<typeof Aspect>;
 export const ASPECTS = Aspect.options;
 
-/** Finished size per aspect, PLAN.md section 8. */
+/** Finished size per aspect. */
 export const META_SIZE: Record<Aspect, readonly [number, number]> = { '1:1': [1080, 1080], '4:5': [1080, 1350], '9:16': [1080, 1920] };
 /** Generation size: edges must be multiples of 16, slightly larger than the finished frame so the crop has room. */
 export const GEN_SIZE: Record<Aspect, readonly [number, number]> = { '1:1': [1088, 1088], '4:5': [1088, 1360], '9:16': [1088, 1936] };
@@ -129,7 +129,7 @@ export type PromptTemplateInput = z.infer<typeof PromptTemplateInput>;
 /** Built-in variables every template can use. Custom ones are anything else in `{{…}}`. */
 export const BUILTIN_PROMPT_VARIABLES = ['title', 'highlight_1', 'highlight_2', 'highlight_3', 'price', 'brand', 'product_type', 'aspect'] as const;
 
-/** Every template must carry these instructions, PLAN.md section 10. Appended automatically. */
+/** Every template must carry these instructions. Appended automatically. */
 export const PROMPT_FIXED_RULES =
   'Match the reference images exactly: the same product, colours, materials, proportions and details. Do not alter, restyle or add features to the product. No text, no logos, no watermarks, no captions, no borders.';
 export const PROMPT_9x16_RULE = 'For 9:16 keep the top 14% and the bottom 35% of the frame clear of the product and of any important detail, so interface overlays do not cover it.';

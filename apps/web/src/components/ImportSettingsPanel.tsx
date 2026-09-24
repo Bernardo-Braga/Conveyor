@@ -37,7 +37,7 @@ const toForm = (s: ImportSettings): Form => ({
 
 const money = (s: string) => Math.round(Number.parseFloat(s) * 100);
 
-/** Import settings, PLAN.md section 10: pricing and listing. Money is entered in dollars and stored in minor units. */
+/** Import settings: pricing and listing. Money is entered in dollars and stored in minor units. */
 export function ImportSettingsPanel() {
   const [settings, setSettings] = useState<ImportSettings | null>(null);
   const [form, setForm] = useState<Form | null>(null);

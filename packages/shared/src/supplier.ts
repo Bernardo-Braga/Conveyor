@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Platform } from './product.ts';
 
 /**
- * The normalised supplier product, PLAN.md section 6. Money is in minor units of `currency`
+ * The normalised supplier product. Money is in minor units of `currency`
  * (cents for USD, fen for CNY); the plan's `cost` field is `costMinor` here for that reason.
  */
 export const SourceProduct = z.object({

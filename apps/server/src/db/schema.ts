@@ -1,5 +1,5 @@
 /**
- * Drizzle schema, PLAN.md section 11. Money is in minor units as integers.
+ * Drizzle schema. Money is in minor units as integers.
  * Times are ISO-8601 text. JSON columns are validated with Zod at the boundary.
  */
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
@@ -257,7 +257,7 @@ export const codexTasks = sqliteTable('codex_tasks', {
 
 /**
  * The launch plan for one product: the template copy it is launched with, and the creatives
- * chosen for it. Editing here never touches the template file (PLAN.md section 9.5).
+ * chosen for it. Editing here never touches the template file.
  */
 export const productLaunch = sqliteTable(
   'product_launch',

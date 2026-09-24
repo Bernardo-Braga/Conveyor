@@ -25,7 +25,7 @@ export type Route = (req: Recorded) => Response | Promise<Response>;
 
 /**
  * A fake `fetch` that records every call and answers from the given routes.
- * Tests never call outside services (CLAUDE.md hard rule 2).
+ * Tests never call outside services.
  */
 export function fakeFetch(routes: Record<string, Route> = {}) {
   const calls: Recorded[] = [];
@@ -74,7 +74,7 @@ export function testContext(fetchImpl?: typeof fetch, opts: TestOptions = {}): A
   const store = new MemoryStore();
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'conveyor-test-'));
   const impl = fetchImpl ?? opts.fetchImpl;
-  // Tests never start a real subprocess (CLAUDE.md hard rule 2). Without an injected runner,
+  // Tests never start a real subprocess. Without an injected runner,
   // both CLIs report themselves as missing so a writer can never actually run.
   const runCli: RunCli = opts.runCli ?? (async (file) => ({ stdout: '', stderr: `${file} is not available in tests`, code: 127, timedOut: false }));
   const ctx = createContext({ dbFile: ':memory:', secretStore: store, dataDir, runCli, ...(impl ? { fetchImpl: impl } : {}) });

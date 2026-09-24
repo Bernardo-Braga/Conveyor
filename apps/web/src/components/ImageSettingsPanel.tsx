@@ -3,7 +3,7 @@ import type { ImageSettings } from '@conveyor/shared';
 import { api } from '../lib/api.ts';
 import { Button, Field, Panel, inputClass } from './Panel.tsx';
 
-/** Image engine settings, PLAN.md section 10. */
+/** Image engine settings. */
 export function ImageSettingsPanel() {
   const [s, setS] = useState<ImageSettings | null>(null);
   const [msg, setMsg] = useState<string | null>(null);

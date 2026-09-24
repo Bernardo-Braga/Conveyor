@@ -16,7 +16,7 @@ interface RawRead {
   adsets?: { data: { id: string; name: string; status: string; daily_budget?: string; lifetime_budget?: string; targeting?: { flexible_spec?: { interests?: { id: string; name: string }[] }[] }; ads?: { data: { id: string; name: string; status: string; creative?: { id: string } }[] } }[] };
 }
 
-/** One request with nested fields (PLAN.md section 9.7, step 1). */
+/** One request with nested fields. */
 export async function readLiveCampaign(client: MetaClient, metaCampaignId: string, meta: { productId: number | null; jobId: number | null }): Promise<{ live: LiveCampaign; requestId: string | null }> {
   const { data, requestId } = await client.get<RawRead>(metaCampaignId, { fields: READ_FIELDS }, { purpose: 'read_campaign', ...meta });
   const minor = (v?: string) => (v == null ? null : Number.parseInt(v, 10));
@@ -106,7 +106,7 @@ export interface EditPlanInput {
 }
 
 /**
- * The change list as one batch (PLAN.md section 9.7, step 2). Removals pause; nothing is deleted
+ * The change list as one batch. Removals pause; nothing is deleted
  * or archived. Sharing is never touched. New objects are created PAUSED and pass the payload rules.
  */
 export function planEditOps(p: EditPlanInput): { ops: BatchOp[]; notes: PayloadNote[]; newCreatives: number } {

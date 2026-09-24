@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Local control panel: supplier link to Shopify draft, AI creatives and a paused Meta campaign.",
+  "license": "MIT",
   "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=24"

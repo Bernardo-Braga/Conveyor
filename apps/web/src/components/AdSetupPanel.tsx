@@ -11,7 +11,7 @@ const FILL_LABELS: Record<AdSetupSettings['fillRule'], string> = {
   manual: 'Manual (board, phase 7)',
 };
 
-/** Ad setup, PLAN.md section 10: the Conveyor-side choices around a template. */
+/** Ad setup: the Conveyor-side choices around a template. */
 export function AdSetupPanel() {
   const [s, setS] = useState<AdSetupSettings | null>(null);
   const [msg, setMsg] = useState<string | null>(null);

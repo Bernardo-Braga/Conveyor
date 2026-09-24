@@ -11,7 +11,7 @@ import { looksLikeTemplate, parseTemplate } from './templates.ts';
 
 export type ImportFormat = 'template' | 'graph' | 'unknown';
 
-/** Detection order, PLAN.md section 9.2. */
+/** Detection order. */
 export function detectFormat(raw: unknown): ImportFormat {
   if (looksLikeTemplate(raw)) return 'template';
   const o = raw as Record<string, unknown> | null;
@@ -292,7 +292,7 @@ export async function proposeMapping(raw: unknown, dir: string, preferred: Listi
 }
 
 /**
- * Copy belongs to a product (PLAN.md section 9.2): the template's example copy is saved on the
+ * Copy belongs to a product: the template's example copy is saved on the
  * product whose Shopify handle matches its destination URL, when that product is on the Line.
  * Returns the handle when no product matched, so the UI can offer a one-query pull.
  */

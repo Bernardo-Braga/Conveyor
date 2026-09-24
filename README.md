@@ -1,42 +1,162 @@
 # Conveyor
 
-A local macOS control panel that takes a supplier link through to a Shopify draft, AI creatives and a paused Meta campaign. `Plan.md` is the specification; `CLAUDE.md` holds the hard rules.
+Conveyor is a local web app for macOS. Paste a supplier link from AliExpress or 1688 and it takes the product through to:
 
-## Setup
+1. **A Shopify draft.** Conveyor imports the supplier data and photos, prices the product, and writes the listing.
+2. **Ad creatives.** Conveyor generates AI images in the Studio, finishes them to Meta's sizes, and you approve the ones you want.
+3. **A paused Meta campaign.** Conveyor builds the campaign from your own template. Nothing goes live until you press activate.
 
-- Node 24 or newer, pnpm 10 (`corepack enable` picks the pinned version), `brew install exiftool`.
-- Codex CLI installed and signed in with ChatGPT (`codex login`). Image workers and the fallback listing writer run on that plan.
-- Optional: an OpenAI API key with `gpt-image-2` access, for the backup image engine that takes over after a Codex plan limit or two failed tasks.
-- Claude Code installed and signed in with your Claude plan (`claude auth login`). No Claude Console account or `ANTHROPIC_API_KEY` is needed; Conveyor strips keys from the writer's environment so the plan login is always used.
-- Backups: Settings, Maintenance, "Back up now" writes one zip under the data directory's `backups/` (database, templates, product folders; never keys). The ten newest are kept.
-- Data lives in `~/Library/Application Support/Conveyor/data`. Override with `CONVEYOR_DATA_DIR`. Each product gets a folder under `products/` (listing photos, references, creatives); Codex image workers run under `workers/`; Meta templates are JSON files under `templates/`, edited from the Templates tab.
-- Keys live in the macOS Keychain (service `Conveyor`). Add them under Settings, Connections. The Meta system user token needs `ads_management`, `ads_read`, `business_management` and `pages_read_engagement`; the Meta app secret is optional and only needed when the app requires `appsecret_proof`.
-- `META-API-HANDOFF.md` records what the previous launcher learned about the Marketing API; the payload rules and their tests encode it.
+The listing writer and the image workers run as local command-line tools on your own Claude and ChatGPT plans, so these steps need no API key. Your keys stay in the macOS Keychain, and the server listens only on `127.0.0.1`.
+
+## Requirements
+
+- macOS
+- [Node.js](https://nodejs.org) 24 or newer
+- pnpm 10. Run `corepack enable` once and the version pinned in `package.json` is used automatically.
+- exiftool: `brew install exiftool`
+- [Claude Code](https://docs.claude.com/en/docs/claude-code), signed in with a Claude plan. It writes the listings.
+- [Codex CLI](https://github.com/openai/codex), signed in with a ChatGPT plan. It generates the images and is the backup listing writer.
+
+## Install
+
+```sh
+git clone https://github.com/Bernardo-Braga/Conveyor.git
+cd Conveyor
+corepack enable
+pnpm install
+```
+
+Sign in to both command-line tools with your plan, not an API key:
+
+```sh
+claude auth login     # choose your Claude.ai account
+codex login           # choose "Sign in with ChatGPT"
+```
+
+Conveyor removes every API key from these tools' environment before starting them, so they always run on your plan login.
+
+## Get your keys and IDs
+
+You add everything below in the app under **Settings**. Keys go in the **Keys** panel and IDs in the **Accounts** panel. Each service has a **Test** button in the **Connections** panel.
+
+| Service | Needed for | Required |
+|---|---|---|
+| RapidAPI | Importing supplier links | Yes |
+| Shopify | Creating the product draft | Yes |
+| Meta | Launching campaigns | Yes, to launch |
+| OpenAI API | Backup image engine | Optional |
+| Claude API | A third listing writer | Optional |
+
+### RapidAPI (supplier data)
+
+1. Create an account at [rapidapi.com](https://rapidapi.com).
+2. Subscribe to **AliExpress DataHub** (`aliexpress-datahub.p.rapidapi.com`). To import 1688 links as well, subscribe to **1688 DataHub** (`1688-datahub.p.rapidapi.com`). Both can use the same RapidAPI app.
+3. Open either API's **Playground** and copy the `X-RapidAPI-Key` value. You can also find it under **Apps → your app → Authorization**.
+4. In Conveyor, paste it into **Settings → Keys → RapidAPI key**.
+
+Each product costs one request. Under **Settings → Import quota**, set the pause threshold to fit your plan's monthly allowance.
+
+### Shopify (product drafts)
+
+Conveyor uses a custom app from the Shopify Dev Dashboard with the client-credentials grant. The app must belong to the same organization as your store.
+
+1. Go to the [Shopify Dev Dashboard](https://dev.shopify.com/dashboard) and create an app.
+2. Create a version with these Admin API scopes and release it:
+   `read_products`, `write_products`, `read_publications`, `write_publications`, `write_files`
+3. Install the app on your store.
+4. Open the app's **Settings** page and copy the **Client ID** and **Client secret**.
+5. In Conveyor:
+   - put the **Client ID** and **Client secret** in **Settings → Keys**,
+   - put your store's `.myshopify.com` domain in **Settings → Accounts → Shopify store domain**,
+   - press **Test** next to Shopify.
+
+### Meta (campaigns)
+
+You need a Meta Business portfolio that owns your ad account, Facebook Page and pixel.
+
+1. **App.** At [developers.facebook.com](https://developers.facebook.com/apps), create an app of type **Business** and add the **Marketing API** product.
+2. **System user.** In [Business Settings](https://business.facebook.com/settings) → **Users → System users**, add a system user (Admin is simplest). Under **Assign assets**, give it your ad account, Page and pixel.
+3. **Token.** Still on the system user, press **Generate new token**, choose your app, and grant these permissions:
+   `ads_management`, `ads_read`, `business_management`, `pages_read_engagement`.
+   Paste the token into **Settings → Keys → Meta access token**.
+4. **IDs.** Fill in **Settings → Accounts**:
+   - **Meta ad account ID**: in Ads Manager, the account switcher or the `act=` value in the URL. Enter it as `act_1234567890`.
+   - **Meta Page ID**: on your Page, **About → Page transparency**, or Business Settings → **Accounts → Pages**.
+   - **Instagram account ID**: Business Settings → **Accounts → Instagram accounts**.
+   - **Pixel ID**: Events Manager → **Data sources**.
+   - **Test ad account ID** (optional): a separate ad account, used only by `pnpm meta:test-launch`.
+5. **App secret (optional).** Only needed if your app has **Require app secret** turned on. Copy it from **App settings → Basic → App secret** into **Settings → Keys → Meta app secret**.
+
+Everything Conveyor creates on Meta starts **paused**. A campaign only goes live when you activate it from the Launch tab.
+
+### OpenAI API (optional backup image engine)
+
+If Codex hits your ChatGPT plan's limit or fails twice on a batch, Conveyor can finish the remaining images through the OpenAI Images API (`gpt-image-2`).
+
+1. Create a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). The organization needs access to `gpt-image-2`, which may require verifying the organization.
+2. Paste it into **Settings → Keys → OpenAI API key**. The hand-off is on by default, and you can turn it off under **Settings → Image engine**. You can also make OpenAI the main engine there.
+
+### Claude API (optional)
+
+This is not needed if you use Claude Code. A key from the [Claude Console](https://console.anthropic.com/settings/keys) adds a third listing writer, and it is never the default. Paste it into **Settings → Keys → Claude API key**.
+
+## Run
+
+```sh
+pnpm start
+```
+
+Then open <http://127.0.0.1:4310>. This builds the web app and serves it together with the API. Restart it after pulling changes.
+
+For development with hot reload, run `pnpm dev`. The web app is at <http://127.0.0.1:5173>, and the API runs on port 4310.
+
+To start Conveyor automatically when you log in, run `pnpm start-at-login install`, or use the switch under **Settings → Maintenance**. Run `pnpm start-at-login uninstall` to remove it.
+
+## First run
+
+1. **Settings.** Add your keys and IDs and press **Test** for each connection.
+2. **Settings → Import.** Check the pricing multiplier, margin, shipping estimate and currency rate. Optionally, describe your store's brand voice and standing rules for the listing writer.
+3. **Templates.** Import a Meta campaign template (JSON). `fixtures/templates/` has two examples: one CBO, one ABO.
+4. **Line.** Paste a supplier link. You can add a short focus for the listing first. Conveyor imports the product, writes the listing and creates the Shopify draft.
+5. **Studio.** Generate creatives, then approve or reject them (`A` approves, `X` rejects).
+6. **Launch.** Choose the template, the creatives and this launch's settings (name, dates, audience, budget), run the checks, and launch. The campaign is created paused. Activate it when you're ready.
+
+The **Requests** tab shows every outside request Conveyor has made, by day, service and product.
+
+## Where your data lives
+
+- **App data:** `~/Library/Application Support/Conveyor/data`. This holds the database, product folders, image worker folders, templates and backups. Set `CONVEYOR_DATA_DIR` to use another folder.
+- **Keys:** the macOS Keychain, under the service name `Conveyor`. They are never written to the database, logs, backups or the browser.
+- **Backups:** **Settings → Maintenance → Back up now** writes a zip of the database, templates and product folders, without keys. The ten newest are kept.
 
 ## Scripts
 
 | Command | What it does |
 |---|---|
-| `pnpm dev` | Server on `http://127.0.0.1:4310` and the web app on `http://127.0.0.1:5173` (Vite proxies `/api`). |
-| `pnpm start` | The current version as one process: builds the web app, then serves it and the API from the server at `http://127.0.0.1:4310`. Stop with Ctrl-C. |
-| `pnpm build` | Builds the web app into `apps/web/dist`, which the server serves when present. |
-| `pnpm start-at-login install\|uninstall\|status` | Installs a user LaunchAgent that runs the server at login in production mode. The same switch is under Settings, Maintenance. |
-| `pnpm test` | All tests. They never call an outside service. |
-| `pnpm typecheck` | TypeScript strict across root scripts, shared, server and web. |
-| `pnpm lint` | ESLint, including the "one HTTP path" and "no keytar, no shell" rules. |
-| `pnpm db:generate` | Generate a Drizzle migration after changing `apps/server/src/db/schema.ts`. |
-| `pnpm codex:smoke` | Manual. Runs the Codex image test three times (`--runs N --timeout S`). Uses the ChatGPT plan. |
-| `pnpm meta:test-launch [--template ashworth\|whitcombe\|both] [--keep] [--dry-run]` | Manual. Creates a paused campaign per template in the test ad account from Settings, reads it back, and deletes it. `--dry-run` plans and checks everything with 0 requests. |
-| `pnpm writer:smoke` | Manual. Writes a listing with both local writers from the captured fixture (`--writer claude_code\|codex\|both`). Uses your Claude and ChatGPT plans, 0 API requests. |
-| `pnpm capture:fixtures <aliexpress link> <1688 link>` | Manual. Exactly 2 RapidAPI requests. Saves the raw bodies in the app database and writes `fixtures/rapidapi/*.json` for the mapper tests. Needs the RapidAPI key in the Keychain. |
+| `pnpm start` | Builds the web app and serves the app at `http://127.0.0.1:4310`. |
+| `pnpm dev` | Runs the server and the Vite dev server with hot reload. |
+| `pnpm build` | Builds the web app into `apps/web/dist`. |
+| `pnpm test` | Runs all tests. Tests never call an outside service or start a CLI. |
+| `pnpm typecheck` | Runs TypeScript in strict mode across all packages. |
+| `pnpm lint` | Runs ESLint. |
+| `pnpm db:generate` | Generates a Drizzle migration after a change to `apps/server/src/db/schema.ts`. |
+| `pnpm start-at-login install\|uninstall\|status` | Manages the login item. |
+| `pnpm meta:test-launch [--template ashworth\|whitcombe\|both] [--keep] [--dry-run]` | Creates a paused campaign in the test ad account, reads it back and deletes it. `--dry-run` checks everything with no requests. |
+| `pnpm writer:smoke [--writer claude_code\|codex\|both]` | Writes a listing from a fixture with the local writers. Uses your plans, with no API requests. |
+| `pnpm codex:smoke [--runs N --timeout S]` | Runs a Codex image-generation test on your ChatGPT plan. |
+| `pnpm capture:fixtures <aliexpress link> <1688 link>` | Makes 2 RapidAPI requests and saves the responses as test fixtures. |
 
-## Layout
+## Project layout
 
 ```
-apps/server   Hono API, job worker, SSE, SQLite (Drizzle), ledger client, Keychain wrapper
-apps/web      React + Vite + Tailwind + Radix shell with the design tokens and the progress track
-packages/shared   Zod schemas and types used by both apps
-config/versions.ts   Pinned Meta, Shopify, Codex CLI and model versions
-fixtures/     Recorded responses used by tests, plus real Codex engine output under images/
-scripts/      Manual scripts that make live calls
+apps/server        Hono API, job worker, SSE, SQLite (Drizzle), Keychain access
+apps/web           React + Vite + Tailwind + Radix interface
+packages/shared    Zod schemas and types shared by both apps
+config/versions.ts Pinned Meta, Shopify, CLI and model versions
+fixtures/          Recorded responses and sample templates used by the tests
+scripts/           Manual scripts that make live calls
 ```
+
+## License
+
+[MIT](LICENSE)

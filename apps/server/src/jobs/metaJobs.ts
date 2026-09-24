@@ -22,12 +22,12 @@ export const LaunchJobInput = LaunchInput.extend({ campaignId: z.number().int().
 export type LaunchJobInput = z.infer<typeof LaunchJobInput>;
 
 /**
- * Station 4 (PLAN.md section 9.6). Steps: snapshot (0 or 1) → interests (0 or 1 batch) →
+ * Station 4. Steps: snapshot (0 or 1) → interests (0 or 1 batch) →
  * preflight (local) → upload (1 batch per 50 new images) → objects (1 batch per 50 operations)
  * → finish. Every ID is saved as it returns; a retry sends only the operations still missing.
  * Every object is created PAUSED. Activation is its own job, run only from a user action.
  */
-/** The product read back from Shopify: reused under ten minutes old, otherwise 1 query (PLAN.md section 3). */
+/** The product read back from Shopify: reused under ten minutes old, otherwise 1 query. */
 async function ensureFreshSnapshot(ctx: { db: Db; jobId: number; input: { productId: number }; log: (m: string, l?: 'info' | 'warn', r?: string | null) => void }, shopify: ShopifyClient): Promise<{ requests: number }> {
   const row = ctx.db.select().from(products).where(eq(products.id, ctx.input.productId)).get();
   if (!row?.shopifyProductId) throw new JobStepError('This product is not in Shopify.');
@@ -187,7 +187,7 @@ export function launchJob(deps: { meta: MetaClient; shopify: ShopifyClient }): J
 
 export const ActivateInput = z.object({ campaignId: z.number().int(), action: z.enum(['activate', 'pause']) });
 
-/** One request, only from a user action (PLAN.md section 9.6). Nothing else ever sets ACTIVE. */
+/** One request, only from a user action. Nothing else ever sets ACTIVE. */
 export function activateJob(deps: { meta: MetaClient }): JobDefinition<z.infer<typeof ActivateInput>> {
   return {
     type: 'activate_campaign',
@@ -240,7 +240,7 @@ export function readCampaignJob(deps: { meta: MetaClient }): JobDefinition<z.inf
   };
 }
 
-/** Apply a change list: 1 upload batch if a new image is involved, then 1 batch (PLAN.md section 9.7). */
+/** Apply a change list: 1 upload batch if a new image is involved, then 1 batch. */
 export function applyEditsJob(deps: { meta: MetaClient }): JobDefinition<ApplyEditsInput> {
   return {
     type: 'apply_edits',

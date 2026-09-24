@@ -43,7 +43,7 @@ export interface LaunchSettingsProps {
 }
 
 /**
- * The settings that change with every launch (PLAN.md section 9.5a): name, schedule, audience
+ * The settings that change with every launch: name, schedule, audience
  * and budget, in one row of boxes. Each one is this launch's alone — an empty box follows the
  * template, and nothing typed here ever reaches the template file or the product's copy of it.
  */
