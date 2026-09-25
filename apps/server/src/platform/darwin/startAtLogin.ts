@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import type { AgentStatus, StartAtLogin } from '../types.ts';
 
 const execFileP = promisify(execFile);
 export const LABEL = 'com.conveyor.server';
@@ -19,7 +20,7 @@ export interface AgentPaths {
 }
 
 export function agentPaths(dataDir: string, port: number): AgentPaths {
-  const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+  const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
   return {
     node: process.execPath,
     tsx: path.join(repo, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
@@ -69,14 +70,6 @@ export function plistFor(p: AgentPaths): string {
 `;
 }
 
-export interface AgentStatus {
-  installed: boolean;
-  loaded: boolean;
-  plist: string;
-  pid: number | null;
-  webBuilt: boolean;
-}
-
 export async function agentStatus(p: AgentPaths, run: typeof execFileP = execFileP): Promise<AgentStatus> {
   const installed = fs.existsSync(p.plist);
   let loaded: boolean;
@@ -106,3 +99,9 @@ export async function uninstallAgent(p: AgentPaths, run: typeof execFileP = exec
   fs.rmSync(p.plist, { force: true });
   return agentStatus(p, run);
 }
+
+export const launchAgent: StartAtLogin = {
+  status: (dataDir, port) => agentStatus(agentPaths(dataDir, port)),
+  install: (dataDir, port) => installAgent(agentPaths(dataDir, port)),
+  uninstall: (dataDir, port) => uninstallAgent(agentPaths(dataDir, port)),
+};

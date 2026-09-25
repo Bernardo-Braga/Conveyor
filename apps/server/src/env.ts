@@ -1,13 +1,13 @@
-import os from 'node:os';
 import path from 'node:path';
+import { platform } from './platform/index.ts';
 
 export type ConveyorEnv = 'development' | 'test' | 'production';
 
 const envName = (process.env.CONVEYOR_ENV as ConveyorEnv | undefined) ?? 'development';
 
-/** Data lives in ~/Library/Application Support/Conveyor/data unless overridden. */
+/** Data lives in the platform's app-data folder (on macOS, ~/Library/Application Support/Conveyor/data) unless overridden. */
 export function defaultDataDir(): string {
-  return path.join(os.homedir(), 'Library', 'Application Support', 'Conveyor', 'data');
+  return platform.defaultDataDir();
 }
 
 export const env = {

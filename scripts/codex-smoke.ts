@@ -17,6 +17,9 @@ import { promisify } from 'node:util';
 import zlib from 'node:zlib';
 import { VERSIONS } from '../config/versions.ts';
 import { dataPath } from '../apps/server/src/env.ts';
+import { platform } from '../apps/server/src/platform/index.ts';
+
+const codex = platform.resolveCommand('codex', process.env);
 
 const execFileP = promisify(execFile);
 
@@ -111,8 +114,9 @@ async function runOnce(run: number): Promise<RunResult> {
   const started = Date.now();
   const events = fs.createWriteStream(path.join(folder, 'events.jsonl'));
   const child = spawn(
-    'codex',
+    codex.file,
     [
+      ...codex.args,
       'exec',
       '--cd', folder,
       '--sandbox', 'workspace-write',
@@ -122,7 +126,7 @@ async function runOnce(run: number): Promise<RunResult> {
       '-o', path.join(folder, 'last-message.txt'),
       'Read TASK.md in this folder and do exactly what it says.',
     ],
-    { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CODEX_HOME } },
+    { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CODEX_HOME }, windowsHide: true },
   );
   child.stdout.pipe(events);
   const stderr: string[] = [];
@@ -131,8 +135,7 @@ async function runOnce(run: number): Promise<RunResult> {
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
-    child.kill('SIGTERM');
-    setTimeout(() => child.kill('SIGKILL'), 5000).unref();
+    platform.stopProcess(child);
   }, TIMEOUT_S * 1000);
 
   const exitCode = await new Promise<number | null>((resolve) => child.on('close', (code) => resolve(code)));
@@ -167,7 +170,7 @@ async function runOnce(run: number): Promise<RunResult> {
 async function main() {
   let version = 'not found';
   try {
-    version = (await execFileP('codex', ['--version'])).stdout.trim().replace(/^codex-cli\s+/, '');
+    version = (await execFileP(codex.file, [...codex.args, '--version'])).stdout.trim().replace(/^codex-cli\s+/, '');
   } catch {
     console.error('Codex CLI is not installed or not on PATH.');
     process.exit(2);

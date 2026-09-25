@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ops, type AgentStatus, type BackupInfo } from '../lib/api.ts';
+import { ops, type AgentStatus, type BackupInfo, type OpsInfo } from '../lib/api.ts';
 import { formatDateTime } from '../lib/format.ts';
 import { Badge, Button, Panel } from './Panel.tsx';
 
@@ -9,7 +9,7 @@ const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1)} MB`;
 export function MaintenancePanel() {
   const [backups, setBackups] = useState<{ dir: string; backups: BackupInfo[] } | null>(null);
   const [agent, setAgent] = useState<AgentStatus | null>(null);
-  const [info, setInfo] = useState<{ dataDir: string; port: number; env: string; node: string } | null>(null);
+  const [info, setInfo] = useState<OpsInfo | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const load = () => Promise.all([ops.backups().then(setBackups), ops.agent().then(setAgent), ops.info().then(setInfo)]).catch(() => undefined);
@@ -29,11 +29,12 @@ export function MaintenancePanel() {
       setBusy(false);
     }
   };
+  const service = info?.platform === 'win32' ? 'a scheduled task' : 'a LaunchAgent';
   return (
     <Panel title="Maintenance">
       {info && (
         <p className="text-xs text-ink-3 mb-4 break-all">
-          Data: <code>{info.dataDir}</code> · port {info.port} · {info.env} · Node {info.node}. Backing up the data folder backs up everything except keys, which stay in the Keychain.
+          Data: <code>{info.dataDir}</code> · port {info.port} · {info.env} · Node {info.node}. Backing up the data folder backs up everything except keys, which stay in {info.keyStore}.
         </p>
       )}
       <div className="grid gap-6 md:grid-cols-2">
@@ -73,11 +74,11 @@ export function MaintenancePanel() {
           </div>
           {agent && (
             <p className="text-xs text-ink-2 mb-2 flex items-center gap-2">
-              {agent.loaded ? <Badge tone="green">Running as a LaunchAgent{agent.pid ? ` · pid ${agent.pid}` : ''}</Badge> : agent.installed ? <Badge tone="amber">Installed, not loaded</Badge> : <Badge tone="grey">Off</Badge>}
+              {agent.loaded ? <Badge tone="green">Running as {service}{agent.pid ? ` · pid ${agent.pid}` : ''}</Badge> : agent.installed ? <Badge tone="amber">Installed, not loaded</Badge> : <Badge tone="grey">Off</Badge>}
             </p>
           )}
           <p className="text-xs text-ink-3">
-            A user LaunchAgent runs the server on 127.0.0.1 and serves the built web app at <code>http://127.0.0.1:{info?.port ?? 4310}</code>, so the dev server is not needed.
+            At login, {service} runs the server on 127.0.0.1 and serves the built web app at <code>http://127.0.0.1:{info?.port ?? 4310}</code>, so the dev server is not needed.
             {agent && !agent.webBuilt && <span className="text-amber"> Build the web app first: <code>pnpm build</code>.</span>}
           </p>
           {agent && <p className="text-xs text-ink-3 mt-1 break-all">{agent.plist}</p>}

@@ -30,7 +30,8 @@ export function childEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessE
   const env: NodeJS.ProcessEnv = {};
   for (const [k, v] of Object.entries(base)) {
     if (v === undefined) continue;
-    if ((BANNED as readonly string[]).includes(k)) continue;
+    // Windows reads environment names without regard to case, so `anthropic_api_key` counts too.
+    if ((BANNED as readonly string[]).includes(k.toUpperCase())) continue;
     if (SUSPICIOUS.test(k)) continue;
     env[k] = v;
   }
@@ -41,5 +42,5 @@ export const BANNED_ENV_KEYS: readonly string[] = BANNED;
 
 /** Names of key-like variables currently set, for the Connections warning. */
 export function keyVarsInEnvironment(base: NodeJS.ProcessEnv = process.env): string[] {
-  return Object.keys(base).filter((k) => base[k] !== undefined && ((BANNED as readonly string[]).includes(k) || SUSPICIOUS.test(k)));
+  return Object.keys(base).filter((k) => base[k] !== undefined && ((BANNED as readonly string[]).includes(k.toUpperCase()) || SUSPICIOUS.test(k)));
 }

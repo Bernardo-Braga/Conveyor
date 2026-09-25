@@ -1,19 +1,19 @@
 # Conveyor
 
-Conveyor is a local web app for macOS. Paste a supplier link from AliExpress or 1688 and it takes the product through to:
+Conveyor is a local web app for macOS and Windows. Paste a supplier link from AliExpress or 1688 and it takes the product through to:
 
 1. **A Shopify draft.** Conveyor imports the supplier data and photos, prices the product, and writes the listing.
 2. **Ad creatives.** Conveyor generates AI images in the Studio, finishes them to Meta's sizes, and you approve the ones you want.
 3. **A paused Meta campaign.** Conveyor builds the campaign from your own template. Nothing goes live until you press activate.
 
-The listing writer and the image workers run as local command-line tools on your own Claude and ChatGPT plans, so these steps need no API key. Your keys stay in the macOS Keychain, and the server listens only on `127.0.0.1`.
+The listing writer and the image workers run as local command-line tools on your own Claude and ChatGPT plans, so these steps need no API key. Your keys stay in the system key store (the macOS Keychain or Windows Credential Manager), and the server listens only on `127.0.0.1`.
 
 ## Requirements
 
-- macOS
+- macOS, or Windows 10 (version 1803 or later) or Windows 11. Windows support is new; see [Windows notes](#windows-notes).
 - [Node.js](https://nodejs.org) 24 or newer
 - pnpm 10. Run `corepack enable` once and the version pinned in `package.json` is used automatically.
-- exiftool: `brew install exiftool`
+- exiftool. On macOS: `brew install exiftool`. On Windows: download the Windows executable from [exiftool.org](https://exiftool.org) and put `exiftool.exe` on your `PATH`.
 - [Claude Code](https://docs.claude.com/en/docs/claude-code), signed in with a Claude plan. It writes the listings.
 - [Codex CLI](https://github.com/openai/codex), signed in with a ChatGPT plan. It generates the images and is the backup listing writer.
 
@@ -125,8 +125,8 @@ The **Requests** tab shows every outside request Conveyor has made, by day, serv
 
 ## Where your data lives
 
-- **App data:** `~/Library/Application Support/Conveyor/data`. This holds the database, product folders, image worker folders, templates and backups. Set `CONVEYOR_DATA_DIR` to use another folder.
-- **Keys:** the macOS Keychain, under the service name `Conveyor`. They are never written to the database, logs, backups or the browser.
+- **App data:** `~/Library/Application Support/Conveyor/data` on macOS, `%LOCALAPPDATA%\Conveyor\data` on Windows. This holds the database, product folders, image worker folders, templates and backups. Set `CONVEYOR_DATA_DIR` to use another folder.
+- **Keys:** the macOS Keychain or Windows Credential Manager, under the service name `Conveyor`. They are never written to the database, logs, backups or the browser.
 - **Backups:** **Settings → Maintenance → Back up now** writes a zip of the database, templates and product folders, without keys. The ten newest are kept.
 
 ## Scripts
@@ -160,3 +160,11 @@ scripts/           Manual scripts that make live calls
 ## License
 
 [MIT](LICENSE)
+
+## Windows notes
+
+- Run the commands above in PowerShell or Windows Terminal. `pnpm` runs its scripts through its own shell, so they behave the same as on macOS.
+- Claude Code and Codex can be installed either as `.exe` files or through npm. Conveyor never starts them through a shell: it runs an `.exe` directly and reads npm's `.cmd` wrapper to run the script inside it with Node.
+- **Start at login** (Settings → Maintenance) registers a per-user scheduled task named `Conveyor` instead of a macOS LaunchAgent. It needs no administrator rights. The server's output goes to `server.log` in the data folder.
+- Backups are zipped with the `tar.exe` that ships with Windows.
+

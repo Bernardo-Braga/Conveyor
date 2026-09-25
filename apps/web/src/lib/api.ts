@@ -131,6 +131,15 @@ export interface BackupInfo {
   bytes: number;
   createdAt: string;
 }
+export interface OpsInfo {
+  platform: 'darwin' | 'win32';
+  /** The OS key store as the server names it, e.g. "the macOS Keychain". */
+  keyStore: string;
+  dataDir: string;
+  port: number;
+  env: string;
+  node: string;
+}
 export interface AgentStatus {
   installed: boolean;
   loaded: boolean;
@@ -147,5 +156,5 @@ export const ops = {
   agent: () => request<AgentStatus>('/ops/launch-agent'),
   installAgent: () => request<AgentStatus>('/ops/launch-agent', { method: 'POST' }),
   uninstallAgent: () => request<AgentStatus>('/ops/launch-agent', { method: 'DELETE' }),
-  info: () => request<{ dataDir: string; port: number; env: string; node: string }>('/ops/info'),
+  info: () => request<OpsInfo>('/ops/info'),
 };

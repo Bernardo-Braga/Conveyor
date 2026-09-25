@@ -5,3 +5,6 @@ onlyBuiltDependencies:
   - better-sqlite3
   - "@napi-rs/keyring"
   - esbuild
+# Run package.json scripts through pnpm's own shell on every OS, so `VAR=x cmd` and `&&`
+# work the same on Windows as on macOS.
+shellEmulator: true

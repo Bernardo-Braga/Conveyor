@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ConnectionSettings, ConnectionStatus, SecretName, SecretStatus } from '@conveyor/shared';
 import { Badge, Button, Field, Panel, inputClass } from '../components/Panel.tsx';
-import { api } from '../lib/api.ts';
+import { api, ops } from '../lib/api.ts';
 import type { LiveState } from '../lib/events.ts';
 import { formatDateTime } from '../lib/format.ts';
 import { QuotaPanel } from '../components/QuotaPanel.tsx';
@@ -38,6 +38,10 @@ export function SettingsView({ live }: { live: LiveState }) {
   const [secrets, setSecrets] = useState<SecretStatus[]>([]);
   const [conn, setConn] = useState<ConnectionSettings | null>(null);
   const [statuses, setStatuses] = useState<ConnectionStatus[]>([]);
+  const [keyStore, setKeyStore] = useState<string | null>(null);
+  useEffect(() => {
+    ops.info().then((i) => setKeyStore(i.keyStore), () => undefined);
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -68,7 +72,7 @@ export function SettingsView({ live }: { live: LiveState }) {
 
       <Panel title="Connections">
         <p className="text-sm text-ink-2 mb-4">
-          Keys are stored in the macOS Keychain and never leave this Mac. Claude Code and Codex run on your own plans, so their tests are local and need no key. The other tests make one read-only call each. RapidAPI has no test: its status comes from the last import.
+          Keys are stored in {keyStore ?? 'the system key store'} and never leave this computer. Claude Code and Codex run on your own plans, so their tests are local and need no key. The other tests make one read-only call each. RapidAPI has no test: its status comes from the last import.
         </p>
         <div className="divide-y divide-line">
           {statuses.map((s) => (

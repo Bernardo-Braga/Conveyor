@@ -1,10 +1,7 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import type Database from 'better-sqlite3';
-
-const execFileP = promisify(execFile);
+import { platform } from '../platform/index.ts';
 
 export interface BackupInfo {
   file: string;
@@ -20,10 +17,10 @@ export function backupsDir(dataDir: string): string {
 /**
  * A backup is one zip: a consistent copy of the database (SQLite's online backup, not a file
  * copy, so a running server is fine), the templates folder and every product folder. Worker
- * scratch folders and earlier backups are left out. Keys live in the Keychain and are never
- * included.
+ * scratch folders and earlier backups are left out. Keys live in the OS key store and are
+ * never included.
  */
-export async function createBackup(sqlite: Database.Database, dataDir: string, opts: { now?: Date; ditto?: typeof execFileP } = {}): Promise<BackupInfo> {
+export async function createBackup(sqlite: Database.Database, dataDir: string, opts: { now?: Date; zipFolder?: typeof platform.zipFolder } = {}): Promise<BackupInfo> {
   const now = opts.now ?? new Date();
   const stamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const staging = path.join(dataDir, 'backups', `.staging-${stamp}`);
@@ -35,10 +32,9 @@ export async function createBackup(sqlite: Database.Database, dataDir: string, o
       const src = path.join(dataDir, folder);
       if (fs.existsSync(src)) fs.cpSync(src, path.join(staging, folder), { recursive: true, filter: (p) => !p.includes(`${path.sep}trash${path.sep}`) && !p.endsWith('.tmp') });
     }
-    fs.writeFileSync(path.join(staging, 'README.txt'), ['Conveyor backup', `Created ${now.toISOString()}`, '', 'Restore: stop Conveyor, replace conveyor.sqlite, templates/ and products/ in the data directory with these, start Conveyor.', 'Keys are not included; they stay in the macOS Keychain.', ''].join('\n'));
+    fs.writeFileSync(path.join(staging, 'README.txt'), ['Conveyor backup', `Created ${now.toISOString()}`, '', 'Restore: stop Conveyor, replace conveyor.sqlite, templates/ and products/ in the data directory with these, start Conveyor.', `Keys are not included; they stay in ${platform.keyStoreName}.`, ''].join('\n'));
     const file = path.join(backupsDir(dataDir), `conveyor-backup-${stamp}.zip`);
-    // ditto is the macOS archiver; execFile, never a shell.
-    await (opts.ditto ?? execFileP)('/usr/bin/ditto', ['-c', '-k', '--sequesterRsrc', staging, file]);
+    await (opts.zipFolder ?? platform.zipFolder)(staging, file);
     const stat = fs.statSync(file);
     return { file, name: path.basename(file), bytes: stat.size, createdAt: now.toISOString() };
   } finally {

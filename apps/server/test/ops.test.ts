@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.ts';
 import { costs, products, requests } from '../src/db/schema.ts';
 import { createBackup, listBackups, pruneBackups } from '../src/ops/backup.ts';
-import { LABEL, agentPaths, agentStatus, plistFor } from '../src/ops/launchAgent.ts';
+import { LABEL, agentPaths, agentStatus, plistFor } from '../src/platform/darwin/startAtLogin.ts';
 import { templatesDir } from '../src/meta/templateFiles.ts';
 import { testContext } from './helpers.ts';
 
@@ -38,7 +38,8 @@ describe('Requests page data', () => {
   });
 });
 
-describe('backups', () => {
+// These use ditto and launchctl, which only exist on macOS; the Windows versions are in platformWin32.test.ts.
+describe.runIf(process.platform === 'darwin')('backups', () => {
   it('writes one zip with a consistent database copy, templates and products, then prunes to the newest ten', async () => {
     const ctx = testContext();
     fs.mkdirSync(templatesDir(ctx.dataDir), { recursive: true });
@@ -82,7 +83,7 @@ describe('backups', () => {
   });
 });
 
-describe('start at login', () => {
+describe.runIf(process.platform === 'darwin')('start at login', () => {
   it('the plist runs node on the tsx loader with no shell, binds the data dir and port, and status reads launchctl', async () => {
     const p = agentPaths('/Users/x/Library/Application Support/Conveyor/data', 4310);
     const plist = plistFor(p);

@@ -1,12 +1,9 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { VERSIONS } from '../../../../config/versions.ts';
+import { runCli } from '../listing/writers/runCli.ts';
 import { result, type ConnectionTester } from './types.ts';
-
-const execFileP = promisify(execFile);
 
 export interface CodexCheck {
   installed: boolean;
@@ -19,13 +16,8 @@ export interface CodexCheck {
 /** Local only: no network request. Reads the CLI version and whether an auth file exists. */
 export async function checkCodex(codexHome = process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex')): Promise<CodexCheck> {
   const authFile = path.join(codexHome, 'auth.json');
-  let version: string | null;
-  try {
-    const { stdout } = await execFileP('codex', ['--version'], { timeout: 10_000 });
-    version = stdout.trim().replace(/^codex-cli\s+/, '') || null;
-  } catch {
-    version = null;
-  }
+  const res = await runCli('codex', ['--version'], { cwd: process.cwd(), env: process.env, timeoutMs: 10_000 });
+  const version = res.code === 0 ? res.stdout.trim().replace(/^codex-cli\s+/, '') || null : null;
   return { installed: version != null, version, pinned: VERSIONS.codexCli, signedIn: fs.existsSync(authFile), authFile };
 }
 

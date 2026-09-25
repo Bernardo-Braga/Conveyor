@@ -4,7 +4,7 @@ import type { AppContext } from '../context.ts';
 import { costs, products, requests } from '../db/schema.ts';
 import { env } from '../env.ts';
 import { createBackup, listBackups, pruneBackups } from './backup.ts';
-import { agentPaths, agentStatus, installAgent, uninstallAgent } from './launchAgent.ts';
+import { platform } from '../platform/index.ts';
 
 export function opsRoutes(ctx: AppContext) {
   const r = new Hono();
@@ -71,17 +71,17 @@ export function opsRoutes(ctx: AppContext) {
     return c.json({ ...info, pruned }, 201);
   });
 
-  // Start at login: a user LaunchAgent that runs the server on 127.0.0.1 and serves the built web app.
-  r.get('/ops/launch-agent', async (c) => c.json(await agentStatus(agentPaths(ctx.dataDir, env.port))));
+  // Start at login: the platform's login service (a LaunchAgent on macOS) runs the server on 127.0.0.1 and serves the built web app.
+  r.get('/ops/launch-agent', async (c) => c.json(await platform.startAtLogin.status(ctx.dataDir, env.port)));
   r.post('/ops/launch-agent', async (c) => {
     if (env.isTest) return c.json({ error: 'Not available in tests' }, 400);
-    return c.json(await installAgent(agentPaths(ctx.dataDir, env.port)));
+    return c.json(await platform.startAtLogin.install(ctx.dataDir, env.port));
   });
   r.delete('/ops/launch-agent', async (c) => {
     if (env.isTest) return c.json({ error: 'Not available in tests' }, 400);
-    return c.json(await uninstallAgent(agentPaths(ctx.dataDir, env.port)));
+    return c.json(await platform.startAtLogin.uninstall(ctx.dataDir, env.port));
   });
 
-  r.get('/ops/info', (c) => c.json({ dataDir: ctx.dataDir, port: env.port, env: env.name, version: process.env.npm_package_version ?? null, node: process.version }));
+  r.get('/ops/info', (c) => c.json({ platform: platform.name, keyStore: platform.keyStoreName, dataDir: ctx.dataDir, port: env.port, env: env.name, version: process.env.npm_package_version ?? null, node: process.version }));
   return r;
 }

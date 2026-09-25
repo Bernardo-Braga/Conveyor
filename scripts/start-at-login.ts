@@ -1,14 +1,14 @@
 /**
  * Start at login from the terminal: `pnpm start-at-login install|uninstall|status`.
- * Same LaunchAgent the Settings page installs. Build the web app first (`pnpm build`).
+ * Same login service the Settings page installs (a LaunchAgent on macOS). Build the web app first (`pnpm build`).
  */
-import { agentPaths, agentStatus, installAgent, uninstallAgent } from '../apps/server/src/ops/launchAgent.ts';
+import { platform } from '../apps/server/src/platform/index.ts';
 import { env } from '../apps/server/src/env.ts';
 
 const cmd = process.argv[2] ?? 'status';
-const paths = agentPaths(env.dataDir, env.port);
-const run = cmd === 'install' ? installAgent : cmd === 'uninstall' ? uninstallAgent : agentStatus;
-run(paths)
+const { startAtLogin } = platform;
+const run = cmd === 'install' ? startAtLogin.install : cmd === 'uninstall' ? startAtLogin.uninstall : startAtLogin.status;
+run(env.dataDir, env.port)
   .then((s) => {
     console.log(JSON.stringify(s, null, 2));
     if (cmd === 'install' && !s.webBuilt) console.log('Note: apps/web/dist is missing; run pnpm build so the agent can serve the web app.');
