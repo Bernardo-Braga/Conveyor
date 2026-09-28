@@ -163,8 +163,40 @@ describe('codex worker pool', () => {
     await ctx.close();
   });
 
+  it('runs one format on several workers at once', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const cli = fakeCli({
+      codex: async (call) => {
+        if (call.args[0] === '--version') return { stdout: 'codex-cli 0.154.0' };
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((r) => setTimeout(r, 60));
+        const files = [...fs.readFileSync(path.join(call.cwd, 'TASK.md'), 'utf8').matchAll(/out\/(\d\d\.png)/g)].map((m) => m[1]!);
+        fs.mkdirSync(path.join(call.cwd, 'out'), { recursive: true });
+        for (const f of files) fs.writeFileSync(path.join(call.cwd, 'out', f), MUG);
+        inFlight -= 1;
+        return { stdout: '' };
+      },
+    });
+    const ctx = testContext(undefined, { runCli: cli.run });
+    const engine = codexEngine({ workers: 3, imagesPerTask: 'format', timeLimitPerImageMs: 5_000, run: cli.run, pollMs: 5 });
+    const out = await engine.generate({ batchId: 1, productId: 1, workDir: path.join(ctx.dataDir, 'w'), referencePaths: [], prompt: 'p', slots: slots(6, ['1:1']) }, { onImage: async () => undefined, log: () => undefined, progress: () => undefined });
+    expect(out.producedCreativeIds).toHaveLength(6);
+    expect(out.tasks).toBe(3);
+    expect(peak).toBe(3);
+    await ctx.close();
+  });
+
   it('planTasks and taskFile', () => {
     expect(planTasks(slots(2), 'format').map((t) => t.slots.length)).toEqual([2, 2, 2]);
+    // One format is split across the workers instead of running in one process.
+    expect(planTasks(slots(6, ['1:1']), 'format', 3).map((t) => t.slots.length)).toEqual([2, 2, 2]);
+    // Chunks never mix formats; the big ones go first so three workers finish after four images each.
+    const mixed = planTasks(slots(6, ['1:1', '4:5']), 'format', 3);
+    expect(mixed.map((t) => [t.aspect, t.slots.length])).toEqual([['1:1', 4], ['4:5', 4], ['1:1', 2], ['4:5', 2]]);
+    expect(mixed.map((t) => t.index)).toEqual([0, 1, 2, 3]);
+    expect(mixed.flatMap((t) => t.slots.map((s) => s.creativeId)).sort((a, b) => a - b)).toEqual(slots(6, ['1:1', '4:5']).map((s) => s.creativeId));
     expect(planTasks(slots(2), 'one')).toHaveLength(6);
     const t = taskFile({ prompt: 'P', aspect: '9:16', slots: [{ creativeId: 1, aspect: '9:16', slot: 7 }], refs: ['reference-1.png'], edit: { name: 'edit-target.jpg', instruction: 'make the mug blue' } });
     expect(t).toContain('1088x1936');
@@ -317,7 +349,8 @@ describe('a 12-image batch on Codex', () => {
     const job = t.ctx.worker.list()[0]!;
     expect(job.status).toBe('failed');
     expect(job.error).toMatchObject({ step: 'generate', retryable: true, code: 'usage_limit' });
-    expect(job.error!.message).toMatch(/3 of 4 images were not made/);
+    // Two workers share the four images, so each makes one before the limit.
+    expect(job.error!.message).toMatch(/2 of 4 images were not made/);
     let b = t.ctx.db.select().from(creativeBatches).get()!;
     expect(b.status).toBe('partial');
     expect(b.note).toMatch(/plan limit|usage limit/i);
@@ -329,9 +362,9 @@ describe('a 12-image batch on Codex', () => {
     expect(t.ctx.worker.view(job.id).status).toBe('done');
     b = t.ctx.db.select().from(creativeBatches).get()!;
     expect(b.status).toBe('done');
-    // The retry produced only the 3 missing images and made no new API request.
-    const lastTask = fs.readFileSync(path.join(t.codex.of('codex').filter((c) => c.args[0] === 'exec').at(-1)!.cwd, 'TASK.md'), 'utf8');
-    expect(lastTask).toContain('out/02.png, out/03.png, out/04.png');
+    // The retry produced only the 2 missing images and made no new API request.
+    const retryTasks = t.codex.of('codex').filter((c) => c.args[0] === 'exec').slice(2).map((c) => fs.readFileSync(path.join(c.cwd, 'TASK.md'), 'utf8'));
+    expect([...new Set(retryTasks.flatMap((task) => [...task.matchAll(/out\/(\d\d)\.png/g)].map((m) => m[1])))].sort()).toEqual(['02', '04']);
     expect(t.api()).toHaveLength(1);
     await t.ctx.close();
   });

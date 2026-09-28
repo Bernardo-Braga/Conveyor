@@ -64,7 +64,7 @@ export const ImageSettings = z.object({
   codex: z.object({
     /** Concurrent Codex processes, each in its own folder. */
     workers: z.number().int().min(1).max(4).default(3),
-    /** One task per image, or one task that makes all of a format's images. */
+    /** One task per image, or tasks that group a format's images, split so every worker has a share. */
     imagesPerTask: z.enum(['one', 'format']).default('format'),
     timeLimitPerImageSec: z.number().int().min(60).max(900).default(240),
     /** After a plan limit or two failures, give the rest to the OpenAI engine. */

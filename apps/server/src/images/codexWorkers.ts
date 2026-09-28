@@ -65,7 +65,7 @@ export function codexEngine(opts: CodexPoolOptions): ImageEngine {
     },
 
     async generate(req, events) {
-      const tasks = planTasks(req.slots, opts.imagesPerTask);
+      const tasks = planTasks(req.slots, opts.imagesPerTask, opts.workers);
       const produced = new Set<number>();
       let failures = 0;
       let taskCount = 0;
@@ -196,16 +196,23 @@ export function codexEngine(opts: CodexPoolOptions): ImageEngine {
   };
 }
 
-/** One task per format by default; `one` makes a task per image, which is slower but isolates failures. */
-export function planTasks(slots: EngineSlot[], mode: 'one' | 'format'): Task[] {
+/**
+ * `format` groups a format's images into one task, split into chunks of at most
+ * ceil(images / workers) so no worker sits idle while another makes a whole format alone.
+ * Larger tasks go first so the longest runs start earliest. `one` makes a task per image,
+ * which pays Codex start-up for every image but isolates failures.
+ */
+export function planTasks(slots: EngineSlot[], mode: 'one' | 'format', workers = 1): Task[] {
   const groups = new Map<Aspect, EngineSlot[]>();
   for (const s of slots) groups.set(s.aspect, [...(groups.get(s.aspect) ?? []), s]);
-  const tasks: Task[] = [];
+  const chunk = mode === 'one' ? 1 : Math.max(1, Math.ceil(slots.length / Math.max(1, workers)));
+  const planned: { aspect: Aspect; slots: EngineSlot[] }[] = [];
   for (const [aspect, group] of groups) {
-    if (mode === 'one') for (const s of group) tasks.push({ index: tasks.length, aspect, slots: [s], attempt: 1 });
-    else tasks.push({ index: tasks.length, aspect, slots: group, attempt: 1 });
+    for (let i = 0; i < group.length; i += chunk) planned.push({ aspect, slots: group.slice(i, i + chunk) });
   }
-  return tasks;
+  // Stable sort, so equal sizes keep format order.
+  planned.sort((a, b) => b.slots.length - a.slots.length);
+  return planned.map((t, index) => ({ index, ...t, attempt: 1 }));
 }
 
 export function outName(slot: EngineSlot): string {
