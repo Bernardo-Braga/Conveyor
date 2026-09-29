@@ -10,7 +10,7 @@ export type ConnectionService = z.infer<typeof ConnectionService>;
 export const ConnectionTestResult = z.object({
   service: ConnectionService,
   ok: z.boolean(),
-  /** Plain sentence, e.g. "Signed in as Ashworth Ltd" or the error with code and request ID. */
+  /** Plain sentence, e.g. "Signed in as Cedar Ltd" or the error with code and request ID. */
   detail: z.string(),
   checkedAt: z.string(),
   requestId: z.string().nullable(),

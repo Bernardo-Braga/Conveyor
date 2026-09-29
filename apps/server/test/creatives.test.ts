@@ -277,7 +277,7 @@ describe('a 12-image batch on Codex', () => {
     const ctx = testContext(ff.impl, { runCli: codex.run });
     await ctx.secrets.set('shopify_client_id', 'cid');
     await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-    ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+    ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
     const snapshotAt = new Date(Date.now() - snapshotAgeMin * 60_000).toISOString();
     const pid = ctx.db.insert(products).values({ origin: 'shopify', state: 'editing_in_shopify', shopifyProductId: 'gid://shopify/Product/8001', shopifyHandle: 'linen-oversized-blazer', title: 'Linen Oversized Blazer', snapshot: { ...SNAPSHOT, fetchedAt: snapshotAt }, snapshotAt }).returning({ id: products.id }).get().id;
     const app = createApp(ctx);

@@ -12,7 +12,7 @@ async function setup() {
   const ctx = testContext(ff.impl);
   await ctx.secrets.set('shopify_client_id', 'cid');
   await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-  ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+  ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
   const app = createApp(ctx);
   const post = (path: string, body: unknown) => app.request(path, { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
   const gql = () => ff.calls.filter((c) => c.url.includes('graphql.json'));

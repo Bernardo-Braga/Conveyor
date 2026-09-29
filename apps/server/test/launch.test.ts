@@ -11,8 +11,8 @@ import { FIXTURES, fakeFetch, fixture, json, testContext, type Recorded } from '
 
 const MUG = fs.readFileSync(path.join(FIXTURES, 'images', 'codex-mug.png'));
 const SNAPSHOT = ShopifySnapshot.parse({
-  id: 'gid://shopify/Product/8001', handle: 'ashworth-leather-penny-loafers', title: 'Ashworth Leather Penny Loafers', status: 'ACTIVE', descriptionHtml: '<p>x</p>', productType: 'Loafers', tags: [], vendor: 'conveyor',
-  onlineStoreUrl: 'https://example-store.com/products/ashworth-leather-penny-loafers', featuredImage: null, images: [], options: [], variants: [{ id: 'v1', title: 'S', sku: null, priceMinor: 8999, compareAtPriceMinor: null, imageId: null }], currency: 'USD', updatedAt: '2026-09-15T10:00:00Z', fetchedAt: new Date().toISOString(),
+  id: 'gid://shopify/Product/8001', handle: 'cedar-leather-penny-loafers', title: 'Cedar Leather Penny Loafers', status: 'ACTIVE', descriptionHtml: '<p>x</p>', productType: 'Loafers', tags: [], vendor: 'conveyor',
+  onlineStoreUrl: 'https://example-store.com/products/cedar-leather-penny-loafers', featuredImage: null, images: [], options: [], variants: [{ id: 'v1', title: 'S', sku: null, priceMinor: 8999, compareAtPriceMinor: null, imageId: null }], currency: 'USD', updatedAt: '2026-09-15T10:00:00Z', fetchedAt: new Date().toISOString(),
 });
 
 type Op = { name?: string; omit_response_on_success?: boolean; method?: string; relative_url: string; body?: string; attached_files?: string };
@@ -88,7 +88,7 @@ async function setup(templateFile: string, approved = 6, g = graph()) {
   const dir = path.join(ctx.dataDir, 'creatives');
   fs.mkdirSync(dir, { recursive: true });
   for (let i = 1; i <= approved; i++) {
-    const file = path.join(dir, `ashworth_4x5_0${i}.jpg`);
+    const file = path.join(dir, `cedar_4x5_0${i}.jpg`);
     fs.writeFileSync(file, MUG);
     ctx.db.insert(creatives).values({ batchId, productId: pid, aspect: '4:5', slot: i, status: 'finished', approval: 'approved', fileName: path.basename(file), finishedPath: file, metadataCheck: 'clean (sharp, exiftool)' }).run();
   }
@@ -109,7 +109,7 @@ describe('fill rules and counts', () => {
     expect(fillCreatives('by_format', ['US - Reels', 'US - Feed'], 2, pool)).toEqual([[4], [1, 2]]);
     expect(fillCreatives('manual', ['a'], 3, pool)).toEqual([[]]);
   });
-  it('Ashworth is 28 operations in one batch, Whitcombe 36', () => {
+  it('Cedar is 28 operations in one batch, Maple 36', () => {
     const a = { campaignName: 'x', adSets: [1, 2, 3].map((i) => ({ index: i, name: `s${i}`, budgetMinor: null, interestKind: 'broad' as const, interestLabel: null, interests: [], suggestions: [], countryOverride: null, ageBand: null, ads: Array.from({ length: 6 }, (_, j) => ({ creativeId: j + 1, fileName: `f${j}`, primaryText: 'p', headline: 'h', description: '', destinationUrl: 'u' })) })) };
     expect(launchCounts(a, 6, 6)).toEqual({ operations: 28, batches: 1, requests: 2 });
     const w = { ...a, adSets: [1, 2, 3, 4, 5].map((i) => ({ ...a.adSets[0]!, index: i, ads: a.adSets[0]!.ads.slice(0, 5) })) };
@@ -119,7 +119,7 @@ describe('fill rules and counts', () => {
 
 describe('launch preview and preflight', () => {
   it('shows the structure, counts and checks without any request; a draft product blocks', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     const res = await t.app.request(`/api/products/${t.pid}/launch-preview?templateId=${t.templateId}`);
     const p = (await res.json()) as { mode: string; operations: number; imageUploads: number; requests: number; canLaunch: boolean; checks: { id: string; level: string }[]; structure: { adSets: { name: string; interestKind: string; interests: { id: string }[]; ads: unknown[] }[] } };
     expect(p.mode).toBe('CBO');
@@ -140,8 +140,8 @@ describe('launch preview and preflight', () => {
     await t.ctx.close();
   });
 
-  it('Whitcombe: placeholders are acknowledgeable warnings, the mode mismatch is noted, and the launch is 36 operations', async () => {
-    const t = await setup('templates/whitcombe-abo.json', 5);
+  it('Maple: placeholders are acknowledgeable warnings, the mode mismatch is noted, and the launch is 36 operations', async () => {
+    const t = await setup('templates/maple-abo.json', 5);
     const p = (await (await t.app.request(`/api/products/${t.pid}/launch-preview?templateId=${t.templateId}`)).json()) as { mode: string; operations: number; canLaunch: boolean; checks: { id: string; level: string; acknowledgeable: boolean }[]; structure: { adSets: { interestKind: string; budgetMinor: number | null }[] } };
     expect(p.mode).toBe('ABO');
     expect(p.operations).toBe(36);
@@ -156,7 +156,7 @@ describe('launch preview and preflight', () => {
   });
 
   it('a stale draft snapshot warns instead of blocking, and re-reading from Shopify clears it', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     const { eq } = await import('drizzle-orm');
     const stale = new Date(Date.now() - 20 * 60 * 1000).toISOString();
     t.ctx.db.update(products).set({ snapshot: { ...SNAPSHOT, status: 'DRAFT', fetchedAt: stale }, snapshotAt: stale }).where(eq(products.id, t.pid)).run();
@@ -183,7 +183,7 @@ describe('launch preview and preflight', () => {
   });
 
   it('the launch uses the creatives chosen for the product, in order, not the first approved ones', async () => {
-    const t = await setup('templates/ashworth-cbo.json', 9); // 9 approved, 6 slots per ad set
+    const t = await setup('templates/cedar-cbo.json', 9); // 9 approved, 6 slots per ad set
     const before = (await (await t.app.request(`/api/products/${t.pid}/launch-preview?templateId=${t.templateId}`)).json()) as { structure: { adSets: { ads: { creativeId: number }[] }[] } };
     expect(before.structure.adSets[0]!.ads.map((a) => a.creativeId)).toEqual([1, 2, 3, 4, 5, 6]); // the old behaviour: the first six
 
@@ -212,7 +212,7 @@ describe('launch preview and preflight', () => {
   });
 
   it('a template edited for one product is launched for that product only; the template file keeps its own settings', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     const original = (await (await t.app.request(`/api/templates/${t.templateId}`)).json()) as { json: { campaign: { budget: { daily_budget_minor: number } }; adset_count: number } };
     expect(original.json.campaign.budget.daily_budget_minor).toBe(10000);
 
@@ -242,7 +242,7 @@ describe('launch preview and preflight', () => {
   });
 
   it('the launch settings change this launch only, and are laid over the template when it is sent', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     const start = new Date(Date.now() + 86_400_000).toISOString();
     const overrides = { campaignName: 'Loafers – leather angle', startTime: start, genders: [2], ageMin: 25, ageMax: 45, countries: ['US', 'CA'], advantageAudience: false, budgetMinor: 4500 };
     expect((await t.post(`/api/products/${t.pid}/launch-plan`, { templateId: t.templateId, overrides }, 'PUT')).status).toBe(200);
@@ -280,7 +280,7 @@ describe('launch preview and preflight', () => {
   });
 
   it('under ABO the launch budget is every ad set\'s, and an empty start time means "when activated"', async () => {
-    const t = await setup('templates/whitcombe-abo.json', 5);
+    const t = await setup('templates/maple-abo.json', 5);
     expect((await t.post(`/api/products/${t.pid}/launch-plan`, { templateId: t.templateId, overrides: { budgetMinor: 3000, startTime: '' } }, 'PUT')).status).toBe(200);
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId, acknowledge: ['interest_placeholder', 'interest_unmatched'] });
     await t.ctx.worker.drain();
@@ -296,7 +296,7 @@ describe('launch preview and preflight', () => {
   });
 
   it('"start again from the template" keeps this launch\'s settings and chosen images', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     const original = (await (await t.app.request(`/api/templates/${t.templateId}`)).json()) as { json: Record<string, unknown> };
     await t.post(`/api/products/${t.pid}/launch-plan`, { templateId: t.templateId, template: { ...original.json, adset_count: 2 }, creativeIds: [2, 3], overrides: { campaignName: 'Keep me' } }, 'PUT');
     expect((await t.app.request(`/api/products/${t.pid}/launch-plan`, { method: 'DELETE' })).status).toBe(200);
@@ -310,7 +310,7 @@ describe('launch preview and preflight', () => {
   });
 
   it('preflight blocks unapproved or unclean creatives and empty ad sets', () => {
-    const t = Template.parse(fixture('templates/ashworth-cbo.json'));
+    const t = Template.parse(fixture('templates/cedar-cbo.json'));
     const structure = { campaignName: 'c', adSets: [{ index: 0, name: 'a', budgetMinor: null, interestKind: 'broad' as const, interestLabel: null, interests: [], suggestions: [], countryOverride: null, ageBand: null, ads: [{ creativeId: 1, fileName: 'f', primaryText: 'p', headline: 'h', description: '', destinationUrl: 'u' }] }, { index: 1, name: 'b', budgetMinor: null, interestKind: 'broad' as const, interestLabel: null, interests: [], suggestions: [], countryOverride: null, ageBand: null, ads: [] }] };
     const checks = preflight({ template: t, structure, snapshot: SNAPSHOT, snapshotFresh: true, creatives: [{ id: 1, metadataCheck: 'metadata left: XMP', approval: 'pending', status: 'finished' }], pageId: '1', pixelId: '2', adAccountId: 'act_1', tokenSet: true });
     const ids = checks.filter((c) => c.level === 'block').map((c) => c.id).sort();
@@ -319,8 +319,8 @@ describe('launch preview and preflight', () => {
 });
 
 describe('launching', () => {
-  it('Ashworth: 1 upload batch + 1 object batch, everything PAUSED, IDs saved, product paused in Meta', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+  it('Cedar: 1 upload batch + 1 object batch, everything PAUSED, IDs saved, product paused in Meta', async () => {
+    const t = await setup('templates/cedar-cbo.json');
     const res = await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId });
     expect(res.status).toBe(202);
     await t.ctx.worker.drain();
@@ -372,11 +372,11 @@ describe('launching', () => {
     await t.ctx.close();
   });
 
-  it('Whitcombe: 36 operations, campaign sends sharing false and no budget, ad sets 2000 each; placeholders launch broad after acknowledgement', async () => {
-    const t = await setup('templates/whitcombe-abo.json', 5);
+  it('Maple: 36 operations, campaign sends sharing false and no budget, ad sets 2000 each; placeholders launch broad after acknowledgement', async () => {
+    const t = await setup('templates/maple-abo.json', 5);
     // The fixture's start time (17 Sep 2026) is now in the past; pin a future one so the "kept" branch is exercised.
     const FUTURE = '2030-01-15T10:00:00.000Z';
-    const stored = Template.parse(fixture('templates/whitcombe-abo.json'));
+    const stored = Template.parse(fixture('templates/maple-abo.json'));
     stored.adset.schedule.start_time = FUTURE;
     storeTemplate(t.ctx.db, stored, 'file');
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId, acknowledge: ['interest_placeholder'] });
@@ -397,7 +397,7 @@ describe('launching', () => {
 
   it('a mid-batch failure keeps every created ID; the resume sends only the missing operations, so nothing is duplicated', async () => {
     const g = graph({ failNames: ['set1'], failOnce: true });
-    const t = await setup('templates/ashworth-cbo.json', 6, g);
+    const t = await setup('templates/cedar-cbo.json', 6, g);
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId });
     await t.ctx.worker.drain();
     const job = t.ctx.worker.list().find((j) => j.type === 'launch')!;
@@ -431,7 +431,7 @@ describe('launching', () => {
   });
 
   it('every named operation asks Meta not to omit its response, so no parent ID is lost', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId });
     await t.ctx.worker.drain();
     const named = t.g.sent.flatMap((b) => b.ops).filter((o) => o.name);
@@ -445,7 +445,7 @@ describe('launching', () => {
 
   it('when Meta omitted the parents (17 September 2026), the resume reads their IDs off the ads instead of creating a second campaign', async () => {
     const g = graph({ legacyOmit: true }); // Meta ignores the flag: campaign, ad sets and creatives come back null
-    const t = await setup('templates/ashworth-cbo.json', 6, g);
+    const t = await setup('templates/cedar-cbo.json', 6, g);
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId });
     await t.ctx.worker.drain();
     const job = t.ctx.worker.list().find((j) => j.type === 'launch')!;
@@ -473,7 +473,7 @@ describe('launching', () => {
   });
 
   it('activation is one request from the button and nothing in the launch ever sends ACTIVE', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId });
     await t.ctx.worker.drain();
     const bodies = t.g.sent.flatMap((b) => b.ops.map((o) => o.body ?? ''));
@@ -492,7 +492,7 @@ describe('launching', () => {
   });
 
   it('insights: one account-level query at ad level lands on the ads', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId });
     await t.ctx.worker.drain();
     const firstAd = t.ctx.db.select().from(ads).get()!;
@@ -519,7 +519,7 @@ describe('launching', () => {
   });
 
   it('adSets rows record how each interest was found', async () => {
-    const t = await setup('templates/ashworth-cbo.json');
+    const t = await setup('templates/cedar-cbo.json');
     await t.post(`/api/products/${t.pid}/launch`, { templateId: t.templateId });
     await t.ctx.worker.drain();
     expect(t.ctx.db.select().from(adSets).all().map((s) => s.interestSource)).toEqual(['none', 'none', 'file']);

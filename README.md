@@ -141,7 +141,7 @@ The **Requests** tab shows every outside request Conveyor has made, by day, serv
 | `pnpm lint` | Runs ESLint. |
 | `pnpm db:generate` | Generates a Drizzle migration after a change to `apps/server/src/db/schema.ts`. |
 | `pnpm start-at-login install\|uninstall\|status` | Manages the login item. |
-| `pnpm meta:test-launch [--template ashworth\|whitcombe\|both] [--keep] [--dry-run]` | Creates a paused campaign in the test ad account, reads it back and deletes it. `--dry-run` checks everything with no requests. |
+| `pnpm meta:test-launch [--template cedar\|maple\|both] [--keep] [--dry-run]` | Creates a paused campaign in the test ad account, reads it back and deletes it. `--dry-run` checks everything with no requests. |
 | `pnpm writer:smoke [--writer claude_code\|codex\|both]` | Writes a listing from a fixture with the local writers. Uses your plans, with no API requests. |
 | `pnpm codex:smoke [--runs N --timeout S]` | Runs a Codex image-generation test on your ChatGPT plan. |
 | `pnpm capture:fixtures <aliexpress link> <1688 link>` | Makes 2 RapidAPI requests and saves the responses as test fixtures. |

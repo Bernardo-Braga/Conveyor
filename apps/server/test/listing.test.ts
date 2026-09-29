@@ -95,7 +95,7 @@ describe('createDraft (Shopify productSet)', () => {
     const ctx = testContext(ff.impl);
     await ctx.secrets.set('shopify_client_id', 'cid');
     await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-    ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+    ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
     return { ctx, ff, gql: () => ff.calls.filter((c) => c.url.includes('graphql.json')) };
   }
   const plan = () => buildDraftInput({ source: source(), draft: goodDraft(), settings: ImportSettings.parse({}), usdPerCny: 0.14, sourceMeta: {} });
@@ -146,7 +146,7 @@ describe('a pasted link becomes a Shopify draft in 2 API requests', () => {
     await ctx.secrets.set('rapidapi_key', 'rapid000');
     await ctx.secrets.set('shopify_client_id', 'cid');
     await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-    ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+    ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
     const app = createApp(ctx);
     const post = (path: string, body?: unknown) => app.request(path, { method: 'POST', ...(body ? { body: JSON.stringify(body) } : {}), headers: { 'content-type': 'application/json' } });
     const ledger = () => ctx.db.select().from(requests).all();
@@ -242,7 +242,7 @@ describe('a pasted link becomes a Shopify draft in 2 API requests', () => {
     await ctx.secrets.set('rapidapi_key', 'rapid000');
     await ctx.secrets.set('shopify_client_id', 'cid');
     await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-    ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+    ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
     const app = createApp(ctx);
     const r = (await (await app.request('/api/line', { method: 'POST', body: JSON.stringify({ text: LINK }), headers: { 'content-type': 'application/json' } })).json()) as { productId: number };
     await ctx.worker.drain();
@@ -279,7 +279,7 @@ describe('a pasted link becomes a Shopify draft in 2 API requests', () => {
     await ctx.secrets.set('rapidapi_key', 'rapid000');
     await ctx.secrets.set('shopify_client_id', 'cid');
     await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-    ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+    ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
     const app = createApp(ctx);
     const r = (await (await app.request('/api/line', { method: 'POST', body: JSON.stringify({ text: LINK }), headers: { 'content-type': 'application/json' } })).json()) as { productId: number };
     await ctx.worker.drain();
@@ -327,17 +327,17 @@ describe('a pasted link becomes a Shopify draft in 2 API requests', () => {
 
   it('hands the writer the titles the store already uses, and leaves the product\'s own out of them', async () => {
     const t = await setup();
-    t.ctx.db.insert(products).values({ origin: 'link', state: 'ready_to_launch', title: 'Ashworth leather loafer', listingDraft: { ...goodDraft(), title: 'Ashworth leather loafer' } }).run();
+    t.ctx.db.insert(products).values({ origin: 'link', state: 'ready_to_launch', title: 'Cedar leather loafer', listingDraft: { ...goodDraft(), title: 'Cedar leather loafer' } }).run();
     t.ctx.settings.set('import', { listing: { instructions: 'Never use the word premium.' } });
     const r = (await (await t.post('/api/line', { text: LINK })).json()) as { productId: number };
     await t.ctx.worker.drain();
     const prompt = t.cli.calls.find((c) => c.file === 'claude' && !isAuth(c))!.args.join('\n');
-    expect(prompt).toContain('- Ashworth leather loafer');
+    expect(prompt).toContain('- Cedar leather loafer');
     expect(prompt).toContain('Do not reuse one of these titles');
     expect(prompt).toContain('Never use the word premium.');
     // Its own draft title is written during the same job; a rewrite must not be told to avoid it.
     expect(recentTitles(t.ctx.db, { exclude: r.productId })).not.toContain('Soft-sole slip-on loafers for men');
-    expect(recentTitles(t.ctx.db)).toEqual(['Soft-sole slip-on loafers for men', 'Ashworth leather loafer']);
+    expect(recentTitles(t.ctx.db)).toEqual(['Soft-sole slip-on loafers for men', 'Cedar leather loafer']);
     await t.ctx.close();
   });
 

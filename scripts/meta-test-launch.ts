@@ -1,7 +1,7 @@
 /**
  * Meta test launch.
  *
- * Manual, run by the user: `pnpm meta:test-launch [--template ashworth|whitcombe|both] [--keep] [--dry-run]`.
+ * Manual, run by the user: `pnpm meta:test-launch [--template cedar|maple|both] [--keep] [--dry-run]`.
  * `--dry-run` plans everything, asserts the payload rules and prints the counts with 0 requests.
  * For each template it creates a PAUSED campaign in the *test* ad account from Settings, with
  * finished JPEGs made from the engine fixture, checks every object exists and is PAUSED, and
@@ -29,7 +29,7 @@ const which = (() => {
 })();
 const KEEP = process.argv.includes('--keep');
 const DRY = process.argv.includes('--dry-run');
-const FILES = { ashworth: 'ashworth-cbo.json', whitcombe: 'whitcombe-abo.json' } as const;
+const FILES = { cedar: 'cedar-cbo.json', maple: 'maple-abo.json' } as const;
 
 async function main() {
   const ctx = createContext();
@@ -55,7 +55,7 @@ async function main() {
       images.push({ id: i + 1, fileName, data: f.jpeg });
     }
 
-    const names = which === 'both' ? (['ashworth', 'whitcombe'] as const) : ([which as 'ashworth' | 'whitcombe'] as const);
+    const names = which === 'both' ? (['cedar', 'maple'] as const) : ([which as 'cedar' | 'maple'] as const);
     for (const name of names) {
       console.log(`=== ${name} ===`);
       const t = Template.parse(JSON.parse(await fs.readFile(path.join(ROOT, 'fixtures', 'templates', FILES[name]), 'utf8')));

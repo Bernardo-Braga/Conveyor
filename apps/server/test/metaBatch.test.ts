@@ -72,7 +72,7 @@ describe('MetaClient', () => {
 describe('templates', () => {
   it('detects, parses (dropping tokens), stores by id, updates on re-import, and exports without x_conveyor', () => {
     const ctx = testContext();
-    const raw = { ...(fixture('templates/ashworth-cbo.json') as Record<string, unknown>), access_token: 'EAAshouldvanish', x_conveyor: { fillRule: 'rotate' } };
+    const raw = { ...(fixture('templates/cedar-cbo.json') as Record<string, unknown>), access_token: 'EAAshouldvanish', x_conveyor: { fillRule: 'rotate' } };
     expect(looksLikeTemplate(raw)).toBe(true);
     expect(looksLikeTemplate({ campaign: {} })).toBe(false);
     const t = parseTemplate(raw);
@@ -84,7 +84,7 @@ describe('templates', () => {
     expect(again.version).toBe(11);
     const exported = exportForOtherTool(t);
     expect(exported).not.toHaveProperty('x_conveyor');
-    const original = fixture('templates/ashworth-cbo.json') as Record<string, unknown>;
+    const original = fixture('templates/cedar-cbo.json') as Record<string, unknown>;
     for (const k of Object.keys(original)) expect(exported).toHaveProperty(k);
     expect(exported.adset).toEqual(original.adset);
     expect(exported.adset_variants).toEqual(original.adset_variants);
@@ -92,7 +92,7 @@ describe('templates', () => {
   });
 
   it('fills name patterns and parses age bands', () => {
-    expect(fillPattern('{{date}}_{{template}}', { date: '2026-09-17', template: 'Whitcombe (CBO) 1.6' })).toBe('2026-09-17_Whitcombe (CBO) 1.6');
+    expect(fillPattern('{{date}}_{{template}}', { date: '2026-09-17', template: 'Maple (CBO) 1.6' })).toBe('2026-09-17_Maple (CBO) 1.6');
     expect(fillPattern('{{campaign}} – {{variation}}', { campaign: 'C', variation: 'US - Broad' })).toBe('C – US - Broad');
     expect(parseAgeBand('25-44')).toEqual({ ok: true, range: [25, 44] });
     expect(parseAgeBand('')).toEqual({ ok: true, range: null });

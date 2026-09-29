@@ -9,7 +9,7 @@ import { preflight } from '../src/meta/preflight.ts';
 import { storeTemplate } from '../src/meta/templates.ts';
 import { fakeFetch, fixture, json, testContext } from './helpers.ts';
 
-const ashworth = () => Template.parse(fixture('templates/ashworth-cbo.json'));
+const cedar = () => Template.parse(fixture('templates/cedar-cbo.json'));
 const NOW = new Date('2026-09-16T12:00:00Z');
 const set = (index: number, name: string, extra: Partial<LaunchAdSet> = {}): LaunchAdSet => ({ index, name, budgetMinor: null, interestKind: 'broad', interestLabel: null, interests: [], suggestions: [], countryOverride: null, ageBand: null, ads: [], ...extra });
 const ad = { creativeId: 1, fileName: 'f.jpg', primaryText: 'p', headline: 'h', description: '', destinationUrl: 'https://example-store.com/products/x' };
@@ -29,7 +29,7 @@ describe('lessons from the other tool', () => {
 
   it('bugs 2 and 7: an ad set with an interest runs with Advantage+ audience off; a broad one keeps it on', () => {
     const notes: PayloadNote[] = [];
-    const base = ashworth().adset.targeting; // advantage_audience: true in the file
+    const base = cedar().adset.targeting; // advantage_audience: true in the file
     const withInterest = targetingFields({ base, countryOverride: null, ageBand: null, interests: [{ id: '6003290737525', name: 'Formal wear' }] }, notes, 2);
     expect(withInterest.targeting_automation).toEqual({ advantage_audience: 0 });
     expect(withInterest.flexible_spec).toEqual([{ interests: [{ id: '6003290737525', name: 'Formal wear' }] }]);
@@ -45,8 +45,8 @@ describe('lessons from the other tool', () => {
 
   it('bug 6: url parameters are token-filled and encoded; the destination URL is not touched', () => {
     expect(fillUrlParams('utm_source=meta&utm_campaign={{campaign}}', { campaign: 'Amalfi 7/14 | 1.4' })).toBe('utm_source=meta&utm_campaign=Amalfi%207%2F14%20%7C%201.4');
-    const c = creativeFields(ad, '1', null, 'h', fillUrlParams('utm_campaign={{campaign}}', { campaign: '2026-09-17_Ashworth (CBO) 1.6' }), 'SHOP_NOW', false);
-    expect(c.url_tags).toBe('utm_campaign=2026-09-17_Ashworth%20(CBO)%201.6');
+    const c = creativeFields(ad, '1', null, 'h', fillUrlParams('utm_campaign={{campaign}}', { campaign: '2026-09-17_Cedar (CBO) 1.6' }), 'SHOP_NOW', false);
+    expect(c.url_tags).toBe('utm_campaign=2026-09-17_Cedar%20(CBO)%201.6');
     expect((c.object_story_spec as { link_data: { link: string } }).link_data.link).toBe(ad.destinationUrl);
   });
 
@@ -61,21 +61,21 @@ describe('lessons from the other tool', () => {
   });
 
   it('a lifetime budget without an end time is refused at both levels', () => {
-    const t = ashworth();
+    const t = cedar();
     t.campaign.budget.daily_budget_minor = null;
     t.campaign.budget.lifetime_budget_minor = 50000;
     expect(() => campaignFields(t, 'x')).toThrow(/end time/);
     t.adset.schedule.end_time = '2030-01-01T00:00:00.000Z';
     const c = campaignFields(t, 'x');
     expect(c).toMatchObject({ lifetime_budget: 50000, stop_time: Math.floor(new Date('2030-01-01T00:00:00.000Z').getTime() / 1000) });
-    const w = Template.parse(fixture('templates/whitcombe-abo.json'));
+    const w = Template.parse(fixture('templates/maple-abo.json'));
     w.adset.budget.daily_budget_minor = null;
     w.adset.budget.lifetime_budget_minor = 9000;
     expect(() => adSetFields({ template: w, set: set(0, 'US - Broad'), campaignRef: 'c', pixelId: null, now: NOW, keepTimeOfDay: false, notes: [] })).toThrow(/end time/);
   });
 
   it('preflight: conversion goals without a pixel block; odd billing events warn; special categories are noted', () => {
-    const t = ashworth();
+    const t = cedar();
     t.adset.promoted_object.pixel_id = null;
     const structure = { campaignName: 'c', adSets: [set(0, 'a', { ads: [ad] })] };
     const snapshot = { id: 'gid://shopify/Product/1', handle: 'x', title: 'x', status: 'ACTIVE', descriptionHtml: '', productType: '', tags: [], vendor: '', onlineStoreUrl: 'https://x/products/x', featuredImage: null, images: [], options: [], variants: [], currency: 'USD', updatedAt: 'u', fetchedAt: 'f' };
@@ -122,11 +122,11 @@ describe('lessons from the other tool', () => {
     const pid = ctx.db.insert(products).values({ origin: 'shopify', state: 'ready_to_launch', shopifyProductId: 'gid://shopify/Product/1', shopifyHandle: 'x' }).returning({ id: products.id }).get().id;
     const b = ctx.db.insert(creativeBatches).values({ productId: pid, prompt: 'p', engine: 'codex', status: 'done', formats: ['4:5'], countPerFormat: 1 }).returning({ id: creativeBatches.id }).get().id;
     ctx.db.insert(creatives).values({ batchId: b, productId: pid, aspect: '4:5', slot: 1, status: 'finished', approval: 'approved', fileName: 'x_4x5_01.jpg', finishedPath: '/tmp/x.jpg', metadataCheck: 'clean' }).run();
-    const t = storeTemplate(ctx.db, ashworth(), 'file');
+    const t = storeTemplate(ctx.db, cedar(), 'file');
     const app = createApp(ctx);
     const res = (await (await app.request(`/api/products/${pid}/launch-validate`, { method: 'POST', body: JSON.stringify({ templateId: t.id }), headers: { 'content-type': 'application/json' } })).json()) as { requests: number; checks: { adSet: string; ok: boolean; message: string | null; estimate: { users_lower: number } | null }[] };
     expect(res.requests).toBe(1);
-    // Ashworth: two broad ad sets share one targeting, the Formal wear one differs → 2 unique specs, 3 checks.
+    // Cedar: two broad ad sets share one targeting, the Formal wear one differs → 2 unique specs, 3 checks.
     expect(seen).toHaveLength(2);
     expect(seen.every((u) => u.startsWith('act_1/delivery_estimate?optimization_goal=OFFSITE_CONVERSIONS&targeting_spec='))).toBe(true);
     expect(res.checks).toHaveLength(3);

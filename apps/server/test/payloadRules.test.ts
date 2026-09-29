@@ -4,8 +4,8 @@ import type { BatchOp } from '../src/meta/batch.ts';
 import { adFields, adSetFields, assertPayloadRules, campaignFields, creativeFields, placementFields, startTimeFields, targetingFields, type PayloadNote } from '../src/meta/payloadRules.ts';
 import { fixture } from './helpers.ts';
 
-const ashworth = () => Template.parse(fixture('templates/ashworth-cbo.json'));
-const whitcombe = () => Template.parse(fixture('templates/whitcombe-abo.json'));
+const cedar = () => Template.parse(fixture('templates/cedar-cbo.json'));
+const maple = () => Template.parse(fixture('templates/maple-abo.json'));
 const NOW = new Date('2026-09-16T12:00:00Z');
 
 function set(index: number, name: string, extra: Partial<LaunchAdSet> = {}): LaunchAdSet {
@@ -13,30 +13,30 @@ function set(index: number, name: string, extra: Partial<LaunchAdSet> = {}): Lau
 }
 
 /** Builds the campaign + ad sets the way the launcher does, so the same rules are exercised. */
-function opsFor(t: ReturnType<typeof ashworth>, sets: LaunchAdSet[], notes: PayloadNote[] = []): BatchOp[] {
+function opsFor(t: ReturnType<typeof cedar>, sets: LaunchAdSet[], notes: PayloadNote[] = []): BatchOp[] {
   const ops: BatchOp[] = [{ method: 'POST', relative_url: 'act_1/campaigns', name: 'campaign', body: campaignFields(t, 'Test campaign') }];
   sets.forEach((s) => ops.push({ method: 'POST', relative_url: 'act_1/adsets', name: `set${s.index}`, body: adSetFields({ template: t, set: s, campaignRef: '{result=campaign:$.id}', pixelId: '1000000000000001', now: NOW, keepTimeOfDay: false, notes }) }));
   return ops;
 }
 
 describe('both templates parse as exported', () => {
-  it('Ashworth is CBO with 3 × 6, Whitcombe is ABO with 5 × 5 and a trimmed name', () => {
-    const a = ashworth();
+  it('Cedar is CBO with 3 × 6, Maple is ABO with 5 × 5 and a trimmed name', () => {
+    const a = cedar();
     expect(a.campaign.budget.mode).toBe('CBO');
     expect([a.adset_count, a.ads_per_adset]).toEqual([3, 6]);
-    const w = whitcombe();
+    const w = maple();
     expect(w.campaign.budget.mode).toBe('ABO');
     expect([w.adset_count, w.ads_per_adset]).toEqual([5, 5]);
-    expect(w.name).toBe('Whitcombe (CBO) 1.6');
+    expect(w.name).toBe('Maple (CBO) 1.6');
     // passthrough: every original key survives
-    const raw = fixture('templates/whitcombe-abo.json') as Record<string, unknown>;
+    const raw = fixture('templates/maple-abo.json') as Record<string, unknown>;
     expect(Object.keys(w).sort()).toEqual(Object.keys(raw).sort());
   });
 });
 
-describe('Ashworth (CBO)', () => {
+describe('Cedar (CBO)', () => {
   it('campaign carries daily_budget 10000 and the bid strategy, no sharing field; ad sets carry no budget', () => {
-    const t = ashworth();
+    const t = cedar();
     const sets = t.adset_variants.map((v, i) => set(i, v.name));
     const ops = opsFor(t, sets);
     const campaign = ops[0]!.body!;
@@ -52,7 +52,7 @@ describe('Ashworth (CBO)', () => {
   });
 
   it('past start_time becomes start when launched; Advantage+ audience is explicit with no age_max; placements send no positions', () => {
-    const t = ashworth();
+    const t = cedar();
     const notes: PayloadNote[] = [];
     const ops = opsFor(t, [set(0, 'US - broad 1')], notes);
     const body = ops[1]!.body!;
@@ -76,7 +76,7 @@ describe('Ashworth (CBO)', () => {
   });
 
   it('an interest from the file goes into flexible_spec unchanged', () => {
-    const t = ashworth();
+    const t = cedar();
     const v = t.adset_variants[2]!;
     const ops = opsFor(t, [set(2, v.name, { interestKind: 'file', interests: v.interests })]);
     const tg = ops[1]!.body!.targeting as { flexible_spec: unknown[]; targeting_automation: { advantage_audience: number } };
@@ -85,9 +85,9 @@ describe('Ashworth (CBO)', () => {
   });
 });
 
-describe('Whitcombe (ABO)', () => {
+describe('Maple (ABO)', () => {
   it('campaign has is_adset_budget_sharing_enabled: false and no budget; 5 ad sets at daily_budget 2000 with a bid strategy', () => {
-    const t = whitcombe();
+    const t = maple();
     const sets = t.adset_variants.map((v, i) => set(i, v.name));
     const ops = opsFor(t, sets);
     const campaign = ops[0]!.body!;
@@ -101,7 +101,7 @@ describe('Whitcombe (ABO)', () => {
   });
 
   it('future start_time is kept as a unix timestamp; gender with Advantage+ audience is flagged as a suggestion', () => {
-    const t = whitcombe();
+    const t = maple();
     const notes: PayloadNote[] = [];
     const ops = opsFor(t, [set(0, 'US - Broad')], notes);
     expect(ops[1]!.body!.start_time).toBe(Math.floor(new Date('2026-09-17T10:00:00.000Z').getTime() / 1000));
@@ -111,7 +111,7 @@ describe('Whitcombe (ABO)', () => {
   });
 
   it('a per-variant ABO budget override replaces the daily budget', () => {
-    const t = whitcombe();
+    const t = maple();
     const ops = opsFor(t, [set(0, 'US - Broad', { budgetMinor: 3500 })]);
     expect(ops[1]!.body!.daily_budget).toBe(3500);
   });
@@ -119,41 +119,41 @@ describe('Whitcombe (ABO)', () => {
 
 describe('failure cases (must fail)', () => {
   it('ABO with a missing sharing field fails', () => {
-    const t = whitcombe();
+    const t = maple();
     const ops = opsFor(t, [set(0, 'US - Broad')]);
     delete ops[0]!.body!.is_adset_budget_sharing_enabled;
     expect(() => assertPayloadRules(ops, 'ABO')).toThrow(/is_adset_budget_sharing_enabled: false/);
   });
   it('ABO with sharing true fails, and so does CBO with it', () => {
-    const w = opsFor(whitcombe(), [set(0, 'US - Broad')]);
+    const w = opsFor(maple(), [set(0, 'US - Broad')]);
     w[0]!.body!.is_adset_budget_sharing_enabled = true;
     expect(() => assertPayloadRules(w, 'ABO')).toThrow(/never be true/);
-    const a = opsFor(ashworth(), [set(0, 'US - broad')]);
+    const a = opsFor(cedar(), [set(0, 'US - broad')]);
     a[0]!.body!.is_adset_budget_sharing_enabled = true;
     expect(() => assertPayloadRules(a, 'CBO')).toThrow(/never be true/);
   });
   it('a CBO ad set with a budget, an ABO campaign with a budget, an ACTIVE object, an implicit advantage_audience and a removed placement all fail', () => {
-    const a = opsFor(ashworth(), [set(0, 'US - broad')]);
+    const a = opsFor(cedar(), [set(0, 'US - broad')]);
     a[1]!.body!.daily_budget = 2000;
     expect(() => assertPayloadRules(a, 'CBO')).toThrow(/must not carry a budget/);
 
-    const w = opsFor(whitcombe(), [set(0, 'US - Broad')]);
+    const w = opsFor(maple(), [set(0, 'US - Broad')]);
     w[0]!.body!.daily_budget = 10000;
     expect(() => assertPayloadRules(w, 'ABO')).toThrow(/must not carry a budget/);
 
-    const s = opsFor(ashworth(), [set(0, 'US - broad')]);
+    const s = opsFor(cedar(), [set(0, 'US - broad')]);
     s[1]!.body!.status = 'ACTIVE';
     expect(() => assertPayloadRules(s, 'CBO')).toThrow(/not PAUSED/);
 
-    const t = opsFor(ashworth(), [set(0, 'US - broad')]);
+    const t = opsFor(cedar(), [set(0, 'US - broad')]);
     delete (t[1]!.body!.targeting as Record<string, unknown>).targeting_automation;
     expect(() => assertPayloadRules(t, 'CBO')).toThrow(/advantage_audience must be explicit/);
 
-    const p = opsFor(ashworth(), [set(0, 'US - broad')]);
+    const p = opsFor(cedar(), [set(0, 'US - broad')]);
     (p[1]!.body!.targeting as Record<string, unknown>).instagram_positions = ['explore'];
     expect(() => assertPayloadRules(p, 'CBO')).toThrow(/removed placement/);
 
-    const m = opsFor(ashworth(), [set(0, 'US - broad')]);
+    const m = opsFor(cedar(), [set(0, 'US - broad')]);
     (m[1]!.body!.targeting as Record<string, unknown>).age_max = 65;
     expect(() => assertPayloadRules(m, 'CBO')).toThrow(/age_max must not be sent/);
   });
@@ -162,7 +162,7 @@ describe('failure cases (must fail)', () => {
 describe('targeting details', () => {
   it('manual placements drop video_feeds and explore with a note, and map reels to facebook_reels', () => {
     const notes: PayloadNote[] = [];
-    const out = placementFields(ashworth().adset.targeting.placements.mode === 'advantage' ? { ...ashworth().adset.targeting.placements, mode: 'manual' } : ashworth().adset.targeting.placements, notes, 0);
+    const out = placementFields(cedar().adset.targeting.placements.mode === 'advantage' ? { ...cedar().adset.targeting.placements, mode: 'manual' } : cedar().adset.targeting.placements, notes, 0);
     expect(out.facebook_positions).toEqual(['feed', 'facebook_reels', 'story', 'search', 'right_hand_column', 'marketplace']);
     expect(out.instagram_positions).toEqual(['stream', 'reels', 'explore_home', 'profile_feed', 'story']);
     expect(out.publisher_platforms).toEqual(['facebook', 'instagram']);
@@ -172,7 +172,7 @@ describe('targeting details', () => {
 
   it('a variant age band with Advantage+ audience becomes age_min (clamped) plus an age_range suggestion; without it, age_min and age_max', () => {
     const notes: PayloadNote[] = [];
-    const base = ashworth().adset.targeting;
+    const base = cedar().adset.targeting;
     const adv = targetingFields({ base, countryOverride: 'GB', ageBand: [30, 44], interests: [] }, notes, 0);
     expect(adv.age_min).toBe(25);
     expect(adv.age_range).toEqual([30, 44]);
@@ -189,7 +189,7 @@ describe('targeting details', () => {
   });
 
   it('bid strategies that need a bid amount or ROAS floor fail without one', () => {
-    const t = whitcombe();
+    const t = maple();
     t.adset.budget.bid_strategy = 'COST_CAP';
     expect(() => opsFor(t, [set(0, 'US - Broad')])).toThrow(/needs a bid amount/);
     t.adset.budget.bid_strategy = 'LOWEST_COST_WITH_MIN_ROAS';

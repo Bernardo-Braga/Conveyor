@@ -13,7 +13,7 @@ async function setup(routes: Parameters<typeof fakeFetch>[0]) {
   await ctx.secrets.set('shopify_client_id', SECRET.shopifyId);
   await ctx.secrets.set('shopify_client_secret', SECRET.shopifySecret);
   await ctx.secrets.set('meta_access_token', SECRET.meta);
-  ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' }, meta: { adAccountId: 'act_1234567890' } });
+  ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' }, meta: { adAccountId: 'act_1234567890' } });
   const deps = { ...ctx, shopifyTokens: ctx.shopifyTokens, jobId: null };
   const ledger = () => ctx.db.select().from(requests).all();
   const assertNoSecretsInLedger = () => {
@@ -62,7 +62,7 @@ describe('connection tests', () => {
     });
     const first = await runConnectionTest('shopify', t.deps);
     expect(first).toMatchObject({ ok: true, requests: 2, requestId: 'shop-req-1' });
-    expect(first.detail).toContain('Ashworth Studio');
+    expect(first.detail).toContain('Cedar Studio');
     expect(t.calls[0]!.body).toContain('grant_type=client_credentials');
     expect(t.calls[1]!.headers['x-shopify-access-token']).toBe('shpat_0123456789abcdef0123456789abcdef');
 
@@ -88,7 +88,7 @@ describe('connection tests', () => {
     const t = await setup({ 'graph.facebook.com/v26.0/act_1234567890': () => json(fixture('meta/adaccount.json'), 200, { 'x-fb-trace-id': 'fbtrace1' }) });
     const r = await runConnectionTest('meta', t.deps);
     expect(r).toMatchObject({ ok: true, requests: 1, requestId: 'fbtrace1' });
-    expect(r.detail).toContain('Ashworth Ads');
+    expect(r.detail).toContain('Cedar Ads');
     expect(t.calls[0]!.url).not.toContain('access_token');
     expect(t.calls[0]!.headers.authorization).toBe(`Bearer ${SECRET.meta}`);
     t.assertNoSecretsInLedger();

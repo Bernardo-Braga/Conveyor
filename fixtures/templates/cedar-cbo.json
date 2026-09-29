@@ -1,6 +1,6 @@
 {
   "id": "tmpl_ee75ef60",
-  "name": "Ashworth (CBO) 1.6  ",
+  "name": "Cedar (CBO) 1.6  ",
   "version": 10,
   "campaign": {
     "objective": "OUTCOME_SALES",
@@ -121,9 +121,9 @@
     "instagram_user_id": null,
     "default_cta": "SHOP_NOW",
     "primary_text": "A penny loafer soft enough to stand in all day, which is what a wedding actually asks of a shoe. Second-layer cowhide with a supple hand and a high-shine finish, hand-stitched detailing across the vamp, and a shock-absorbing sole underneath.",
-    "headline": "Ashworth Leather Penny Loafers",
+    "headline": "Cedar Leather Penny Loafers",
     "description": "",
-    "destination_url": "https://example-store.com/products/ashworth-leather-penny-loafers",
+    "destination_url": "https://example-store.com/products/cedar-leather-penny-loafers",
     "url_params": "utm_source=meta&utm_campaign={{campaign}}",
     "advantage_creative_enhancements": false,
     "status_default": "PAUSED"

@@ -18,7 +18,7 @@ async function seed(routes: Record<string, (r: Recorded) => Response>) {
   const ctx = testContext(ff.impl);
   await ctx.secrets.set('shopify_client_id', 'cid');
   await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-  ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+  ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
   const pid = ctx.db.insert(products).values({ origin: 'shopify', state: 'review', shopifyProductId: SNAPSHOT.id, shopifyHandle: SNAPSHOT.handle, title: SNAPSHOT.title, snapshot: SNAPSHOT }).returning({ id: products.id }).get().id;
   const batchId = ctx.db.insert(creativeBatches).values({ productId: pid, prompt: 'P', engine: 'codex', status: 'done', formats: ['1:1'], countPerFormat: 3, handle: SNAPSHOT.handle }).returning({ id: creativeBatches.id }).get().id;
   const dir = path.join(ctx.dataDir, 'products', String(pid), 'finished');

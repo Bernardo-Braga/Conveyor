@@ -140,7 +140,7 @@ describe('a simulated Codex limit finishes the batch on the API', () => {
     await ctx.secrets.set('shopify_client_id', 'cid');
     await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
     await ctx.secrets.set('openai_api_key', KEY);
-    ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+    ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
     ctx.settings.set('images', { codex: { workers: 1 } });
     const old = new Date(Date.now() - 30 * 60_000).toISOString();
     const pid = ctx.db.insert(products).values({ origin: 'shopify', state: 'editing_in_shopify', shopifyProductId: 'gid://shopify/Product/8001', shopifyHandle: 'linen-oversized-blazer', snapshot: { ...SNAPSHOT, fetchedAt: old }, snapshotAt: old }).returning({ id: products.id }).get().id;
@@ -176,7 +176,7 @@ describe('a simulated Codex limit finishes the batch on the API', () => {
     await ctx.secrets.set('shopify_client_id', 'cid');
     await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
     await ctx.secrets.set('openai_api_key', KEY);
-    ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+    ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
     ctx.settings.set('images', { codex: { workers: 1, handoffToOpenAI: false } });
     const old = new Date(Date.now() - 30 * 60_000).toISOString();
     const pid = ctx.db.insert(products).values({ origin: 'shopify', state: 'editing_in_shopify', shopifyProductId: 'gid://shopify/Product/8001', shopifyHandle: 'linen-oversized-blazer', snapshot: { ...SNAPSHOT, fetchedAt: old }, snapshotAt: old }).returning({ id: products.id }).get().id;

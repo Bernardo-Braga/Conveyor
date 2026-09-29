@@ -13,15 +13,15 @@ const MUG = fs.readFileSync(path.join(FIXTURES, 'images', 'codex-mug.png'));
 const GRAPH_EXPORT = {
   campaign: { id: '1', name: 'Loafers autumn', objective: 'OUTCOME_SALES', buying_type: 'AUCTION', daily_budget: '5000', bid_strategy: 'LOWEST_COST_WITHOUT_CAP', special_ad_categories: [] },
   adsets: [
-    { id: '10', name: 'US - Formal Wear', status: 'PAUSED', billing_event: 'IMPRESSIONS', optimization_goal: 'OFFSITE_CONVERSIONS', destination_type: 'WEBSITE', start_time: 1789600000, promoted_object: { pixel_id: '1000000000000001', custom_event_type: 'PURCHASE' }, targeting: { geo_locations: { countries: ['US'] }, age_min: 25, age_max: 55, genders: [1], targeting_automation: { advantage_audience: 1 }, flexible_spec: [{ interests: [{ id: '6003290737525', name: 'Formal wear' }] }] }, ads: [{ id: '100', name: 'a', creative: { object_story_spec: { page_id: '100000000000001', link_data: { message: 'Body text', name: 'Headline', link: 'https://example-store.com/products/ashworth-leather-penny-loafers', call_to_action: { type: 'SHOP_NOW' } } }, url_tags: 'utm_source=meta' } }, { id: '101', name: 'b' }] },
+    { id: '10', name: 'US - Formal Wear', status: 'PAUSED', billing_event: 'IMPRESSIONS', optimization_goal: 'OFFSITE_CONVERSIONS', destination_type: 'WEBSITE', start_time: 1789600000, promoted_object: { pixel_id: '1000000000000001', custom_event_type: 'PURCHASE' }, targeting: { geo_locations: { countries: ['US'] }, age_min: 25, age_max: 55, genders: [1], targeting_automation: { advantage_audience: 1 }, flexible_spec: [{ interests: [{ id: '6003290737525', name: 'Formal wear' }] }] }, ads: [{ id: '100', name: 'a', creative: { object_story_spec: { page_id: '100000000000001', link_data: { message: 'Body text', name: 'Headline', link: 'https://example-store.com/products/cedar-leather-penny-loafers', call_to_action: { type: 'SHOP_NOW' } } }, url_tags: 'utm_source=meta' } }, { id: '101', name: 'b' }] },
     { id: '11', name: 'US - Broad', targeting: { geo_locations: { countries: ['US'] } } },
   ],
 };
-const UNKNOWN_EXPORT = { title: 'Loafers spring', goal: 'OUTCOME_SALES', budget_usd: 45.5, audiences: [{ label: 'US - Broad' }, { label: 'US - Formal Wear' }], creative: { body: 'Soft loafers for long days', title: 'Ashworth loafers', url: 'https://example-store.com/products/ashworth-leather-penny-loafers' } };
+const UNKNOWN_EXPORT = { title: 'Loafers spring', goal: 'OUTCOME_SALES', budget_usd: 45.5, audiences: [{ label: 'US - Broad' }, { label: 'US - Formal Wear' }], creative: { body: 'Soft loafers for long days', title: 'Cedar loafers', url: 'https://example-store.com/products/cedar-leather-penny-loafers' } };
 
 describe('importer', () => {
   it('detects the three formats', () => {
-    expect(detectFormat(fixture('templates/ashworth-cbo.json'))).toBe('template');
+    expect(detectFormat(fixture('templates/cedar-cbo.json'))).toBe('template');
     expect(detectFormat(GRAPH_EXPORT)).toBe('graph');
     expect(detectFormat(UNKNOWN_EXPORT)).toBe('unknown');
   });
@@ -36,7 +36,7 @@ describe('importer', () => {
     expect(t.adset.targeting.genders).toEqual([1]);
     expect(t.adset.schedule.start_time).toBe(new Date(1789600000 * 1000).toISOString());
     expect(t.adset_variants[0]).toMatchObject({ name: 'US - Formal Wear', interests: [{ id: '6003290737525', name: 'Formal wear' }] });
-    expect(t.ad).toMatchObject({ primary_text: 'Body text', headline: 'Headline', destination_url: 'https://example-store.com/products/ashworth-leather-penny-loafers', page_id: '100000000000001', default_cta: 'SHOP_NOW' });
+    expect(t.ad).toMatchObject({ primary_text: 'Body text', headline: 'Headline', destination_url: 'https://example-store.com/products/cedar-leather-penny-loafers', page_id: '100000000000001', default_cta: 'SHOP_NOW' });
     expect(notes.join(' ')).toMatch(/flexible_spec/);
     expect(Template.safeParse(t).success).toBe(true);
   });
@@ -85,14 +85,14 @@ describe('importer', () => {
 
   it('the template copy is saved on the product with the matching handle, or the handle is reported', () => {
     const ctx = testContext();
-    const t = Template.parse(fixture('templates/ashworth-cbo.json'));
-    expect(linkTemplateCopy(ctx.db, t)).toEqual({ linked: null, handle: 'ashworth-leather-penny-loafers' });
-    const pid = ctx.db.insert(products).values({ origin: 'shopify', state: 'editing_in_shopify', shopifyHandle: 'ashworth-leather-penny-loafers' }).returning({ id: products.id }).get().id;
+    const t = Template.parse(fixture('templates/cedar-cbo.json'));
+    expect(linkTemplateCopy(ctx.db, t)).toEqual({ linked: null, handle: 'cedar-leather-penny-loafers' });
+    const pid = ctx.db.insert(products).values({ origin: 'shopify', state: 'editing_in_shopify', shopifyHandle: 'cedar-leather-penny-loafers' }).returning({ id: products.id }).get().id;
     expect(linkTemplateCopy(ctx.db, t).linked).toBe(pid);
     linkTemplateCopy(ctx.db, t); // idempotent
     const copies = ctx.db.select().from(productCopy).all();
     expect(copies).toHaveLength(1);
-    expect(copies[0]).toMatchObject({ productId: pid, headline: 'Ashworth Leather Penny Loafers', sourceTemplateId: 'tmpl_ee75ef60' });
+    expect(copies[0]).toMatchObject({ productId: pid, headline: 'Cedar Leather Penny Loafers', sourceTemplateId: 'tmpl_ee75ef60' });
     void ctx.close();
   });
 
@@ -117,7 +117,7 @@ describe('importer', () => {
   });
 });
 
-const SNAPSHOT = ShopifySnapshot.parse({ id: 'gid://shopify/Product/8001', handle: 'ashworth-leather-penny-loafers', title: 'Ashworth Leather Penny Loafers', status: 'ACTIVE', descriptionHtml: '<p>x</p>', productType: 'Loafers', tags: [], vendor: 'conveyor', onlineStoreUrl: 'https://example-store.com/products/ashworth-leather-penny-loafers', featuredImage: null, images: [], options: [], variants: [{ id: 'v1', title: 'S', sku: null, priceMinor: 8999, compareAtPriceMinor: null, imageId: null }], currency: 'USD', updatedAt: '2026-09-15T10:00:00Z', fetchedAt: new Date().toISOString() });
+const SNAPSHOT = ShopifySnapshot.parse({ id: 'gid://shopify/Product/8001', handle: 'cedar-leather-penny-loafers', title: 'Cedar Leather Penny Loafers', status: 'ACTIVE', descriptionHtml: '<p>x</p>', productType: 'Loafers', tags: [], vendor: 'conveyor', onlineStoreUrl: 'https://example-store.com/products/cedar-leather-penny-loafers', featuredImage: null, images: [], options: [], variants: [{ id: 'v1', title: 'S', sku: null, priceMinor: 8999, compareAtPriceMinor: null, imageId: null }], currency: 'USD', updatedAt: '2026-09-15T10:00:00Z', fetchedAt: new Date().toISOString() });
 
 function graph() {
   let seq = 0;
@@ -152,7 +152,7 @@ async function launched(g = graph()) {
     fs.writeFileSync(file, MUG);
     cids.push(ctx.db.insert(creatives).values({ batchId, productId: pid, aspect: '4:5', slot: i, status: 'finished', approval: 'approved', fileName: path.basename(file), finishedPath: file, metadataCheck: 'clean (sharp, exiftool)' }).returning({ id: creatives.id }).get().id);
   }
-  const t = storeTemplate(ctx.db, Template.parse(fixture('templates/ashworth-cbo.json')), 'file');
+  const t = storeTemplate(ctx.db, Template.parse(fixture('templates/cedar-cbo.json')), 'file');
   const app = createApp(ctx);
   const post = (p: string, body: unknown = {}) => app.request(p, { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
   const metaRequests = () => ctx.db.select().from(requests).all().filter((r) => r.service === 'meta');
@@ -177,8 +177,8 @@ describe('board', () => {
     const tg = JSON.parse(new URLSearchParams(objects[1]!.body).get('targeting')!) as { flexible_spec: { interests: { id: string }[] }[] };
     expect(tg.flexible_spec[0]!.interests[0]!.id).toBe('6003290737525');
 
-    const saved = (await (await t.post('/api/templates/board', { templateId: t.templateId, name: 'Ashworth board', structure: board })).json()) as { id: number; name: string; adSetCount: number; fileName: string };
-    expect(saved).toMatchObject({ name: 'Ashworth board', adSetCount: 1, fileName: 'Ashworth_board.json' });
+    const saved = (await (await t.post('/api/templates/board', { templateId: t.templateId, name: 'Cedar board', structure: board })).json()) as { id: number; name: string; adSetCount: number; fileName: string };
+    expect(saved).toMatchObject({ name: 'Cedar board', adSetCount: 1, fileName: 'Cedar_board.json' });
     const tj = Template.parse(t.ctx.db.select().from(templates).all().find((r) => r.id === saved.id)!.json);
     expect(tj.adset_variants[0]).toMatchObject({ name: 'US - Formal Wear', interests: [{ id: '6003290737525' }] });
     expect(tj.x_conveyor?.fillRule).toBe('manual');

@@ -43,7 +43,7 @@ async function setup(snapshotAgeMin: number, opts: { down?: () => boolean } = {}
   const ctx = testContext(ff.impl);
   await ctx.secrets.set('shopify_client_id', 'cid');
   await ctx.secrets.set('shopify_client_secret', 'shpss_secret1234567890');
-  ctx.settings.set('connections', { shopify: { storeDomain: 'ashworth-studio.myshopify.com' } });
+  ctx.settings.set('connections', { shopify: { storeDomain: 'cedar-studio.myshopify.com' } });
   const snapshotAt = new Date(Date.now() - snapshotAgeMin * 60_000).toISOString();
   const pid = ctx.db
     .insert(products)
@@ -129,7 +129,7 @@ describe('importing Shopify photos as creatives', () => {
     const t = await setup(2);
     // A product that has already been launched once has an explicit list of creatives. Without
     // this, an imported photo sat in the gallery approved and was never sent.
-    const template = Template.parse(fixture('templates/ashworth-cbo.json'));
+    const template = Template.parse(fixture('templates/cedar-cbo.json'));
     savePlan(t.ctx.db, t.pid, 1, { template, creativeIds: [4242] });
 
     await t.importPhotos([PHOTOS[0]!.id, PHOTOS[1]!.id]);

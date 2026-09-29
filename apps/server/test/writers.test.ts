@@ -65,15 +65,15 @@ describe('listingPrompt', () => {
 
 describe('the titles already used', () => {
   it('are listed newest first, with the rule that a name is not used twice', () => {
-    const p = listingPrompt(source(), '', [], { recentTitles: ['Ashworth leather loafer', 'Whitcombe desk lamp'] });
+    const p = listingPrompt(source(), '', [], { recentTitles: ['Cedar leather loafer', 'Maple desk lamp'] });
     expect(p).toContain('Titles this store has already published, newest first:');
-    expect(p.indexOf('- Ashworth leather loafer')).toBeLessThan(p.indexOf('- Whitcombe desk lamp'));
+    expect(p.indexOf('- Cedar leather loafer')).toBeLessThan(p.indexOf('- Maple desk lamp'));
     expect(p).toContain('Do not reuse one of these titles');
     expect(p.indexOf('Titles this store has already published')).toBeLessThan(p.indexOf('Supplier data'));
   });
 
   it('drops blanks and repeats, whatever their casing, and caps the list', () => {
-    const note = historyNote(['Ashworth loafer', '  ', 'ASHWORTH LOAFER', 'Whitcombe lamp'])!;
+    const note = historyNote(['Cedar loafer', '  ', 'CEDAR LOAFER', 'Maple lamp'])!;
     expect(note.match(/^- /gm)).toHaveLength(2);
     const many = historyNote(Array.from({ length: HISTORY_TITLES + 15 }, (_, i) => `Title ${i}`))!;
     expect(many.match(/^- /gm)).toHaveLength(HISTORY_TITLES);
